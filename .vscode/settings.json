@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^cd /Users/alix/Documents && npm create vite@latest image2tomodachi -- --template react-ts 2>&1 \\| head -50$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}
