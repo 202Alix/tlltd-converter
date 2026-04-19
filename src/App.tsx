@@ -404,14 +404,14 @@ export default function App() {
               </div>
             </div>
 
-            {/* AdSense Footer */}
+            {/* AdSense Banner */}
             <div className="mt-16 pt-16 border-t border-border">
               <ins className="adsbygoogle"
-                   style={{display:'block', textAlign:'center'}}
-                   data-ad-layout="in-article"
-                   data-ad-format="fluid"
+                   style={{display:'block'}}
                    data-ad-client="ca-pub-8354630116454420"
-                   data-ad-slot="xxxxxxxxxx"></ins>
+                   data-ad-slot="7677098087"
+                   data-ad-format="auto"
+                   data-full-width-responsive="true"></ins>
               <script>
                 {`(adsbygoogle = window.adsbygoogle || []).push({});`}
               </script>
