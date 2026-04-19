@@ -12,6 +12,7 @@ export interface ImageProcessOptions {
   sourceY?: number;
   sourceWidth?: number;
   sourceHeight?: number;
+  detailLevel?: 1 | 2 | 4 | 8 | 16;
 }
 
 // Load an image file and return as ImageData
@@ -160,6 +161,9 @@ export function processImage(
   sourceData: ImageData,
   options: ImageProcessOptions
 ): ImageData {
+  const detailLevel = options.detailLevel || 1;
+
+  // Resize to target dimensions first
   const resized = resizeImage(
     sourceData,
     options.width,
@@ -170,21 +174,125 @@ export function processImage(
     options.sourceHeight
   );
 
-  // In color range mode
+  // Apply quantization based on palette mode
+  let quantized: ImageData;
   if (options.paletteMode === 'colorRange') {
-    // If maxColors is explicitly set, limit the colors
     if (options.maxColors !== null && options.maxColors !== undefined && options.maxColors > 0) {
       const palette = extractDiverseColors(resized, options.maxColors);
-      const quantized = quantize(resized, palette, options.quantizationMethod);
-      return quantized;
+      quantized = quantize(resized, palette, options.quantizationMethod);
+    } else {
+      quantized = resized;
     }
-    // If no maxColors limit, return original colors
-    return resized;
+  } else {
+    // Default palette mode
+    let paletteToUse = options.paletteColors;
+    if (options.maxColors !== null && options.maxColors !== undefined && options.maxColors > 0 && options.maxColors < options.paletteColors.length) {
+      // Use first N colors from the default palette
+      paletteToUse = options.paletteColors.slice(0, options.maxColors);
+    }
+    quantized = quantize(resized, paletteToUse, options.quantizationMethod);
   }
 
-  // In default mode, apply quantization to the palette
-  const quantized = quantize(resized, options.paletteColors, options.quantizationMethod);
+  // If detail level > 1, downsample using most common color, then upscale
+  if (detailLevel > 1) {
+    return downsampleAndUpscale(quantized, options.width, options.height, detailLevel);
+  }
+
   return quantized;
+}
+
+// Downsample by finding most common color in each block, then upscale
+function downsampleAndUpscale(
+  imageData: ImageData,
+  targetWidth: number,
+  targetHeight: number,
+  scale: number
+): ImageData {
+  // Calculate downsampled dimensions
+  const downsampledWidth = Math.ceil(targetWidth / scale);
+  const downsampledHeight = Math.ceil(targetHeight / scale);
+
+  // Create downsampled image using most common color in each block
+  const canvas = document.createElement('canvas');
+  canvas.width = downsampledWidth;
+  canvas.height = downsampledHeight;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Could not get canvas context');
+
+  const downsampled = ctx.createImageData(downsampledWidth, downsampledHeight);
+  const srcData = imageData.data;
+  const dstData = downsampled.data;
+
+  for (let blockY = 0; blockY < downsampledHeight; blockY++) {
+    for (let blockX = 0; blockX < downsampledWidth; blockX++) {
+      // Find most common color in this block
+      const colorCount = new Map<string, { r: number; g: number; b: number; a: number; count: number }>();
+
+      const startX = blockX * scale;
+      const startY = blockY * scale;
+      const endX = Math.min(startX + scale, imageData.width);
+      const endY = Math.min(startY + scale, imageData.height);
+
+      let mostCommon = { r: 0, g: 0, b: 0, a: 255, count: 0 };
+
+      for (let y = startY; y < endY; y++) {
+        for (let x = startX; x < endX; x++) {
+          const srcIndex = (y * imageData.width + x) * 4;
+          const r = srcData[srcIndex];
+          const g = srcData[srcIndex + 1];
+          const b = srcData[srcIndex + 2];
+          const a = srcData[srcIndex + 3];
+          const colorKey = `${r},${g},${b},${a}`;
+
+          if (!colorCount.has(colorKey)) {
+            colorCount.set(colorKey, { r, g, b, a, count: 0 });
+          }
+          const color = colorCount.get(colorKey)!;
+          color.count++;
+
+          if (color.count > mostCommon.count) {
+            mostCommon = color;
+          }
+        }
+      }
+
+      // Write most common color to downsampled image
+      const dstIndex = (blockY * downsampledWidth + blockX) * 4;
+      dstData[dstIndex] = mostCommon.r;
+      dstData[dstIndex + 1] = mostCommon.g;
+      dstData[dstIndex + 2] = mostCommon.b;
+      dstData[dstIndex + 3] = mostCommon.a;
+    }
+  }
+
+  // Now upsample back to target size by repeating pixels
+  const upscaled = ctx.createImageData(targetWidth, targetHeight);
+  const upData = upscaled.data;
+
+  for (let y = 0; y < downsampledHeight; y++) {
+    for (let x = 0; x < downsampledWidth; x++) {
+      const srcIndex = (y * downsampledWidth + x) * 4;
+      const r = dstData[srcIndex];
+      const g = dstData[srcIndex + 1];
+      const b = dstData[srcIndex + 2];
+      const a = dstData[srcIndex + 3];
+
+      // Fill the scale x scale block in the upscaled image
+      for (let dy = 0; dy < scale; dy++) {
+        for (let dx = 0; dx < scale; dx++) {
+          const upY = Math.min(y * scale + dy, targetHeight - 1);
+          const upX = Math.min(x * scale + dx, targetWidth - 1);
+          const upIndex = (upY * targetWidth + upX) * 4;
+          upData[upIndex] = r;
+          upData[upIndex + 1] = g;
+          upData[upIndex + 2] = b;
+          upData[upIndex + 3] = a;
+        }
+      }
+    }
+  }
+
+  return upscaled;
 }
 
 // Convert ImageData to canvas and download as PNG

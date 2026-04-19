@@ -55,19 +55,31 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState<PageType>('app');
   const [sourceImageData, setSourceImageData] = useState<ImageData | null>(null);
   const [originalImageSize, setOriginalImageSize] = useState<{ width: number; height: number } | null>(null);
-  const [selectedCanvasSize, setSelectedCanvasSize] = useState<CanvasSizeKey>('TV Screen');
+  const [selectedCanvasSize, setSelectedCanvasSize] = useState<CanvasSizeKey>('Object');
   const [quantizationMethod, setQuantizationMethod] = useState<QuantizationMethod>('nearest-color');
   const [convertedImageData, setConvertedImageData] = useState<ImageData | null>(null);
   const [showGrid, setShowGrid] = useState(false);
-  const [cropParams, setCropParams] = useState({ x: 0, y: 0, width: 255, height: 131 });
+  const [cropParams, setCropParams] = useState({ x: 0, y: 0, width: 306, height: 306 });
   const [paletteMode, setPaletteMode] = useState<'default' | 'colorRange'>('default');
   const [maxColors, setMaxColors] = useState<number | null>(null);
   const [selectedColorFilter, setSelectedColorFilter] = useState<string | null>(null);
+  const [detailLevel, setDetailLevel] = useState<1 | 2 | 4 | 8 | 16>(1);
+
+  // Debounce detail level changes to reduce computation
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (sourceImageData) {
+        processConversion(sourceImageData, selectedCanvasSize, quantizationMethod, cropParams.x, cropParams.y, cropParams.width, cropParams.height, detailLevel);
+      }
+    }, 1000);
+
+    return () => clearTimeout(timeout);
+  }, [detailLevel, sourceImageData, selectedCanvasSize, quantizationMethod, cropParams, paletteMode, maxColors]);
 
   const handleImageLoaded = (imageData: ImageData, originalSize: { width: number; height: number }) => {
     setSourceImageData(imageData);
     setOriginalImageSize(originalSize);
-    processConversion(imageData, selectedCanvasSize, quantizationMethod, 0, 0, originalSize.width, originalSize.height);
+    processConversion(imageData, selectedCanvasSize, quantizationMethod, 0, 0, originalSize.width, originalSize.height, detailLevel);
   };
 
   const processConversion = (
@@ -77,7 +89,8 @@ export default function App() {
     cropX: number,
     cropY: number,
     cropWidth: number,
-    cropHeight: number
+    cropHeight: number,
+    detail: 1 | 2 | 4 | 8 | 16
   ) => {
     const canvasSpec = CANVAS_SIZES[canvasSize];
     try {
@@ -92,6 +105,7 @@ export default function App() {
         sourceY: Math.round(cropY),
         sourceWidth: Math.round(cropWidth),
         sourceHeight: Math.round(cropHeight),
+        detailLevel: detail,
       });
       setConvertedImageData(result);
     } catch (error) {
@@ -103,23 +117,23 @@ export default function App() {
   const handleCanvasSizeChange = (size: CanvasSizeKey) => {
     setSelectedCanvasSize(size);
     if (sourceImageData) {
-      processConversion(sourceImageData, size, quantizationMethod, cropParams.x, cropParams.y, cropParams.width, cropParams.height);
+      processConversion(sourceImageData, size, quantizationMethod, cropParams.x, cropParams.y, cropParams.width, cropParams.height, detailLevel);
     }
   };
 
   const handleQuantizationMethodChange = (method: QuantizationMethod) => {
     setQuantizationMethod(method);
     if (sourceImageData) {
-      processConversion(sourceImageData, selectedCanvasSize, method, cropParams.x, cropParams.y, cropParams.width, cropParams.height);
+      processConversion(sourceImageData, selectedCanvasSize, method, cropParams.x, cropParams.y, cropParams.width, cropParams.height, detailLevel);
     }
   };
 
   const handleCropChange = useCallback((x: number, y: number, width: number, height: number) => {
     setCropParams({ x, y, width, height });
     if (sourceImageData) {
-      processConversion(sourceImageData, selectedCanvasSize, quantizationMethod, x, y, width, height);
+      processConversion(sourceImageData, selectedCanvasSize, quantizationMethod, x, y, width, height, detailLevel);
     }
-  }, [sourceImageData, selectedCanvasSize, quantizationMethod, paletteMode, maxColors]);
+  }, [sourceImageData, selectedCanvasSize, quantizationMethod, paletteMode, maxColors, detailLevel]);
 
   // Helper: Convert ImageData to base64
   const imageDataToBase64 = (imageData: ImageData): string => {
@@ -166,13 +180,14 @@ export default function App() {
           maxColors,
           cropParams,
           originalImageSize,
+          detailLevel,
         };
         localStorage.setItem('tomodachi-state', JSON.stringify(state));
       } catch (error) {
         console.error('Failed to save to localStorage:', error);
       }
     }
-  }, [sourceImageData, selectedCanvasSize, quantizationMethod, paletteMode, maxColors, cropParams, originalImageSize]);
+  }, [sourceImageData, selectedCanvasSize, quantizationMethod, paletteMode, maxColors, cropParams, originalImageSize, detailLevel]);
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -186,16 +201,17 @@ export default function App() {
             if (imageData) {
               setSourceImageData(imageData);
               setOriginalImageSize(state.originalImageSize);
-              setSelectedCanvasSize(state.selectedCanvasSize || 'TV Screen');
+              setSelectedCanvasSize(state.selectedCanvasSize || 'Object');
               setQuantizationMethod(state.quantizationMethod || 'nearest-color');
               setPaletteMode(state.paletteMode || 'default');
               setMaxColors(state.maxColors || null);
-              setCropParams(state.cropParams || { x: 0, y: 0, width: 255, height: 131 });
+              setCropParams(state.cropParams || { x: 0, y: 0, width: 306, height: 306 });
+              setDetailLevel(state.detailLevel || 1);
 
               // Process the image with loaded settings
-              const canvasSize = (state.selectedCanvasSize || 'TV Screen') as CanvasSizeKey;
+              const canvasSize = (state.selectedCanvasSize || 'Object') as CanvasSizeKey;
               const method = (state.quantizationMethod || 'nearest-color') as QuantizationMethod;
-              const cropParams = state.cropParams || { x: 0, y: 0, width: 255, height: 131 };
+              const cropParams = state.cropParams || { x: 0, y: 0, width: 306, height: 306 };
               const canvasSpec = CANVAS_SIZES[canvasSize];
               try {
                 const result = processImage(imageData, {
@@ -209,6 +225,7 @@ export default function App() {
                   sourceY: Math.round(cropParams.y),
                   sourceWidth: Math.round(cropParams.width),
                   sourceHeight: Math.round(cropParams.height),
+                  detailLevel: state.detailLevel || 1,
                 });
                 setConvertedImageData(result);
               } catch (error) {
@@ -229,7 +246,7 @@ export default function App() {
     <>
       {/* Render legal pages */}
       {currentPage === 'privacy' && (
-        <div className="min-h-screen text-foreground" style={{ paddingLeft: '64px', paddingRight: '64px', backgroundColor: 'transparent' }}>
+        <div className="min-h-screen text-foreground" style={{ paddingLeft: '32px', paddingRight: '32px', backgroundColor: 'transparent' }}>
           <div style={{ paddingTop: '16px' }}>
             <button
               onClick={() => setCurrentPage('app')}
@@ -248,7 +265,7 @@ export default function App() {
       )}
 
       {currentPage === 'terms' && (
-        <div className="min-h-screen text-foreground" style={{ paddingLeft: '64px', paddingRight: '64px', backgroundColor: 'transparent' }}>
+        <div className="min-h-screen text-foreground" style={{ paddingLeft: '32px', paddingRight: '32px', backgroundColor: 'transparent' }}>
           <div style={{ paddingTop: '16px' }}>
             <button
               onClick={() => setCurrentPage('app')}
@@ -267,7 +284,7 @@ export default function App() {
       )}
 
       {currentPage === 'license' && (
-        <div className="min-h-screen text-foreground" style={{ paddingLeft: '64px', paddingRight: '64px', backgroundColor: 'transparent' }}>
+        <div className="min-h-screen text-foreground" style={{ paddingLeft: '32px', paddingRight: '32px', backgroundColor: 'transparent' }}>
           <div style={{ paddingTop: '16px' }}>
             <button
               onClick={() => setCurrentPage('app')}
@@ -286,7 +303,7 @@ export default function App() {
       )}
 
       {currentPage === 'contact' && (
-        <div className="min-h-screen text-foreground" style={{ paddingLeft: '64px', paddingRight: '64px', backgroundColor: 'transparent' }}>
+        <div className="min-h-screen text-foreground" style={{ paddingLeft: '32px', paddingRight: '32px', backgroundColor: 'transparent' }}>
           <div style={{ paddingTop: '16px' }}>
             <button
               onClick={() => setCurrentPage('app')}
@@ -306,15 +323,15 @@ export default function App() {
 
       {/* Main app */}
       {currentPage === 'app' && (
-      <div className="min-h-screen text-foreground relative" style={{ paddingLeft: '64px', paddingRight: '64px', backgroundColor: 'transparent' }}>
+      <div className="min-h-screen text-foreground relative" style={{ paddingLeft: '32px', paddingRight: '32px', backgroundColor: 'transparent' }}>
         <div className="max-w-6xl mx-auto relative z-10" style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
         {/* Header */}
         <div className="rounded-3xl" style={{ backgroundColor: 'white', boxShadow: '0 6px 0 #FFC336', borderRadius: '24px', padding: '16px', marginTop: '16px' }}>
           <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-4">
-              <img src={LogoUrl} alt="Logo" style={{ height: '80px', width: 'auto', borderRadius: '8px' }} />
+            <div className="flex items-center gap-4" style={{ minWidth: 0 }}>
+              <img src={LogoUrl} alt="Logo" style={{ height: '64px', width: 'auto', borderRadius: '8px', flexShrink: 0 }} />
               <h1
-                className="text-4xl font-black"
+                className="text-3xl sm:text-4xl font-black"
                 style={{ color: 'black', lineHeight: '1.1' }}
               >
                 Tomodachi Dream<br />Image Converter
@@ -329,7 +346,7 @@ export default function App() {
                   setShowGrid(false);
                 }}
                 className="px-6 py-3 text-white rounded-full transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
-                style={{ backgroundColor: '#FF8000' }}
+                style={{ backgroundColor: '#FF8000', flexShrink: 0 }}
               >
                 <Upload strokeWidth={3} className="w-5 h-5" />
                 Upload Different Image
@@ -355,6 +372,9 @@ export default function App() {
                 onMaxColorsChange={setMaxColors}
                 quantizationMethod={quantizationMethod}
                 onQuantizationMethodChange={handleQuantizationMethodChange}
+                detailLevel={detailLevel}
+                onDetailLevelChange={setDetailLevel}
+                onPageChange={setCurrentPage}
               />
             </div>
 
@@ -405,7 +425,7 @@ export default function App() {
             </div>
 
             {/* AdSense Banner */}
-            <div className="mt-16 pt-16 border-t border-border">
+            <div className="mt-16 pt-16">
               <ins className="adsbygoogle"
                    style={{display:'block'}}
                    data-ad-client="ca-pub-8354630116454420"

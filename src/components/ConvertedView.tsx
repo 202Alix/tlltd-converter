@@ -433,6 +433,7 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
         <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => onToggleGrid(!showGrid)}
+            title="Toggle grid overlay"
             className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
             style={{
               backgroundColor: '#FF8000',
@@ -461,6 +462,7 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
                 }
               }
             }}
+            title="Download as PNG"
             className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold disabled:opacity-50"
             style={{
               backgroundColor: '#FF8000',
@@ -477,6 +479,7 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
       <div className="flex gap-2 w-full items-center" style={{ justifyContent: 'center' }}>
         <button
           onClick={() => handleZoomChange(zoomPercent - 10)}
+          title="Zoom out"
           className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 font-bold"
           style={{
             color: '#2b2b2b'
@@ -511,6 +514,7 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
         />
         <button
           onClick={() => handleZoomChange(zoomPercent + 10)}
+          title="Zoom in"
           className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 font-bold"
           style={{
             color: '#2b2b2b'
@@ -522,6 +526,7 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
         </button>
         <button
           onClick={() => setZoomPercent(100)}
+          title="Reset zoom"
           className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
           style={{
             color: '#2b2b2b'

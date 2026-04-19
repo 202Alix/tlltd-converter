@@ -15,8 +15,8 @@ export const Footer: React.FC<FooterProps> = ({ currentPage, onPageChange }) => 
       marginTop: '64px',
       paddingTop: '32px',
       paddingBottom: '32px',
-      paddingLeft: '64px',
-      paddingRight: '64px',
+      paddingLeft: '32px',
+      paddingRight: '32px',
       backgroundColor: '#fafafa',
       borderTopLeftRadius: '48px',
       borderTopRightRadius: '48px'

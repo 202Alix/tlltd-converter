@@ -157,6 +157,7 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
       <div className="flex gap-2 items-center" style={{ justifyContent: 'center', marginTop: '16px' }}>
         <button
           onClick={() => handleZoomChange(zoomPercent - 10)}
+          title="Zoom out"
           className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 font-bold"
           style={{
             color: '#2b2b2b'
@@ -191,6 +192,7 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
         />
         <button
           onClick={() => handleZoomChange(zoomPercent + 10)}
+          title="Zoom in"
           className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 font-bold"
           style={{
             color: '#2b2b2b'
@@ -206,6 +208,7 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
             setPanX(0);
             setPanY(0);
           }}
+          title="Reset zoom and position"
           className="px-4 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
           style={{
             color: '#2b2b2b'
