@@ -17,7 +17,6 @@ export const Footer: React.FC<FooterProps> = ({ currentPage, onPageChange }) => 
       paddingBottom: '32px',
       paddingLeft: '64px',
       paddingRight: '64px',
-      borderTop: '1px solid #eeedef',
       backgroundColor: '#fafafa',
       borderTopLeftRadius: '48px',
       borderTopRightRadius: '48px'
@@ -139,7 +138,6 @@ export const Footer: React.FC<FooterProps> = ({ currentPage, onPageChange }) => 
         {/* Disclaimer */}
         <div style={{
           paddingTop: '32px',
-          borderTop: '1px solid #eeedef',
           fontSize: '11px',
           color: '#717182',
           lineHeight: '1.6'

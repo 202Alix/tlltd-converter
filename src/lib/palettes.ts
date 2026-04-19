@@ -22,8 +22,12 @@ export const PALETTES = {
 
 export const CANVAS_SIZES = {
   'TV Screen': { width: 255, height: 131 },
-  '128x128': { width: 128, height: 128 },
-  '256x256': { width: 256, height: 256 },
+  'Food': { width: 300, height: 300 },
+  'Object': { width: 306, height: 306 },
+  'Book': { width: 180, height: 255 },
+  'Vinyl': { width: 180, height: 256 },
+  'Switch': { width: 256, height: 134 },
+  'Pet': { width: 265, height: 265 },
 } as const;
 
 export type CanvasSizeKey = keyof typeof CANVAS_SIZES;
