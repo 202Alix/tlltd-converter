@@ -2,7 +2,7 @@
 
 A web application for converting images to the Tomodachi Life: Living the Dream game format.
 
-Live demo: https://202alix.github.io/tlltd-converter
+**Live demo:** https://202alix.github.io/tlltd-converter
 
 ## Features
 
@@ -12,32 +12,7 @@ Live demo: https://202alix.github.io/tlltd-converter
 - Interactive preview with grid overlay and color picker
 - PNG export
 
-## Installation
-
-```bash
-git clone https://github.com/202alix/tlltd-converter.git
-cd tlltd-converter
-npm install
-```
-
-## Development
-
-```bash
-npm run dev
-```
-
-Available at http://localhost:5173
-
-## Build
-
-```bash
-npm run build
-npm run preview
-```
-
-Output is in the `dist/` folder.
-
-## Usage
+## How to Use
 
 1. Upload an image
 2. Position and zoom the image preview
