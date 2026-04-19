@@ -169,7 +169,7 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
       const newDistance = getTouchDistance(e.touches);
       if (touchDistance > 0) {
         const scale = newDistance / touchDistance;
-        const newZoom = Math.max(10, Math.min(1000, zoomPercent * scale));
+        const newZoom = Math.round(Math.max(10, Math.min(1000, zoomPercent * scale)));
         handleZoomChange(newZoom);
         setTouchDistance(newDistance);
       }
