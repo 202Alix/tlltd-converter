@@ -43,6 +43,7 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
   const [tooltip, setTooltip] = useState<Tooltip | null>(null);
   const [toolMode, setToolMode] = useState<ToolMode>('pan');
   const [filterColor, setFilterColor] = useState<string | null>(null);
+  const [touchDistance, setTouchDistance] = useState(0);
 
   const paletteColors = PALETTES.palette1.colors;
   const targetSize = CANVAS_SIZES[canvasSize];
@@ -196,6 +197,60 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
 
   const handleMouseUp = () => {
     setIsDragging(false);
+  };
+
+  const getTouchDistance = (touches: any) => {
+    if (touches.length !== 2) return 0;
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  const getTouchCenter = (touches: any) => {
+    const x = (touches[0].clientX + touches[1].clientX) / 2;
+    const y = (touches[0].clientY + touches[1].clientY) / 2;
+    return { x, y };
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1 && toolMode === 'pan') {
+      setIsDragging(true);
+      setDragStart({ x: e.touches[0].clientX - panX, y: e.touches[0].clientY - panY });
+    } else if (e.touches.length === 2) {
+      setTouchDistance(getTouchDistance(e.touches));
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 1 && isDragging && toolMode === 'pan') {
+      e.preventDefault();
+      const scaledWidth = convertedImageData.width * zoom;
+      const scaledHeight = convertedImageData.height * zoom;
+
+      const maxX = 0;
+      const maxY = 0;
+      const minX = canvasWidth - scaledWidth;
+      const minY = canvasHeight - scaledHeight;
+
+      const newX = Math.max(minX, Math.min(maxX, e.touches[0].clientX - dragStart.x));
+      const newY = Math.max(minY, Math.min(maxY, e.touches[0].clientY - dragStart.y));
+
+      setPanX(newX);
+      setPanY(newY);
+    } else if (e.touches.length === 2) {
+      const newDistance = getTouchDistance(e.touches);
+      if (touchDistance > 0) {
+        const scale = newDistance / touchDistance;
+        const newZoom = Math.max(10, Math.min(1000, zoomPercent * scale));
+        setZoomPercent(newZoom);
+        setTouchDistance(newDistance);
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+    setTouchDistance(0);
   };
 
   // Keyboard shortcuts for panning and zooming
@@ -369,10 +424,13 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         onClick={handleCanvasClick}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         className={`bg-input w-full ${
           toolMode === 'pan' ? 'cursor-grab active:cursor-grabbing' : 'cursor-crosshair'
         }`}
-        style={{ imageRendering: 'pixelated', maxWidth: '512px', height: 'auto' }}
+        style={{ imageRendering: 'pixelated', maxWidth: '512px', height: 'auto', touchAction: 'none' }}
       />
 
       {/* Bottom section with tools on left and grid/download on right */}
@@ -396,7 +454,7 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
             Pan
           </button>
           <button
-            onClick={() => setToolMode('eyedropper')}
+            onClick={() => setToolMode(toolMode === 'eyedropper' ? 'pan' : 'eyedropper')}
             className="px-3 py-2 rounded-lg transition-all font-bold flex items-center gap-2"
             style={{
               backgroundColor: '#FF8000',
@@ -412,7 +470,7 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
             Pick Color
           </button>
           <button
-            onClick={() => setToolMode('colorFilter')}
+            onClick={() => setToolMode(toolMode === 'colorFilter' ? 'pan' : 'colorFilter')}
             className="px-3 py-2 rounded-lg transition-all font-bold flex items-center gap-2"
             style={{
               backgroundColor: '#FF8000',
@@ -482,7 +540,8 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
           title="Zoom out"
           className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 font-bold"
           style={{
-            color: '#2b2b2b'
+            color: '#2b2b2b',
+            flexShrink: 0
           }}
           onMouseEnter={(e) => (e.currentTarget.style.color = '#FF8000')}
           onMouseLeave={(e) => (e.currentTarget.style.color = '#2b2b2b')}
@@ -493,7 +552,7 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
           type="range"
           min="10"
           max="1000"
-          step="10"
+          step="1"
           value={zoomPercent}
           onChange={(e) => {
             const newValue = parseInt(e.target.value);
@@ -501,7 +560,6 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
             updateSliderFill(newValue, 10, 1000, e.currentTarget);
           }}
           style={{
-            maxWidth: '200px',
             accentColor: '#FF8000',
             appearance: 'none',
             width: '100%',
@@ -509,7 +567,9 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
             borderRadius: '4px',
             outline: 'none',
             WebkitAppearance: 'none',
-            '--range-fill': `${((zoomPercent - 10) / (1000 - 10)) * 100}%`
+            '--range-fill': `${((zoomPercent - 10) / (1000 - 10)) * 100}%`,
+            flex: 1,
+            minWidth: 0
           } as React.CSSProperties}
         />
         <button
@@ -517,7 +577,8 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
           title="Zoom in"
           className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 font-bold"
           style={{
-            color: '#2b2b2b'
+            color: '#2b2b2b',
+            flexShrink: 0
           }}
           onMouseEnter={(e) => (e.currentTarget.style.color = '#FF8000')}
           onMouseLeave={(e) => (e.currentTarget.style.color = '#2b2b2b')}
@@ -529,7 +590,8 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
           title="Reset zoom"
           className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
           style={{
-            color: '#2b2b2b'
+            color: '#2b2b2b',
+            flexShrink: 0
           }}
           onMouseEnter={(e) => (e.currentTarget.style.color = '#FF8000')}
           onMouseLeave={(e) => (e.currentTarget.style.color = '#2b2b2b')}

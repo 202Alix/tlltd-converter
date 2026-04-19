@@ -6,18 +6,23 @@ A web application for converting images to the Tomodachi Life: Living the Dream 
 
 ## Features
 
-- Image upload with zoom and pan controls
-- Multiple canvas sizes: 255×131px (TV Screen), 128×128px, 256×256px
-- Color quantization: Nearest Color and Floyd-Steinberg dithering
+- Image upload with zoom, pan, and position controls
+- 7 canvas sizes: TV Screen, Food, Object, Book, Vinyl, Switch, Pet
+- Color quantization methods: Nearest Color and Floyd-Steinberg dithering
+- Palette modes: Default (84 colors) and Color Range (full RGB)
+- Detail/pixelation slider (×1 to ×16)
+- Max colors control for simplified results
 - Interactive preview with grid overlay and color picker
-- PNG export
+- Responsive design for desktop and mobile
+- PNG download and localStorage persistence
 
 ## How to Use
 
 1. Upload an image
-2. Position and zoom the image preview
-3. Select canvas size and quantization method
-4. Download the converted PNG
+2. Position and zoom the image using the preview controls
+3. Select canvas size, quantization method, and palette mode
+4. Adjust detail level and max colors as desired
+5. Download the converted PNG
 
 ## Technologies
 
@@ -25,6 +30,7 @@ A web application for converting images to the Tomodachi Life: Living the Dream 
 - TypeScript
 - Tailwind CSS 4
 - Vite
+- Canvas API for image processing
 - Lucide React icons
 
 ## License
@@ -33,8 +39,8 @@ MIT License
 
 ## Support
 
-Issues or feedback: 202alix@pm.me
+Contact: 202alix@pm.me
 
 ## Disclaimer
 
-This is an unofficial fan-made tool. Nintendo and Tomodachi Life are trademarks of Nintendo Co., Ltd.
+This is an unofficial fan-made tool. Nintendo and Tomodachi Life are trademarks of Nintendo Co., Ltd. This project is not affiliated with, endorsed by, or created by Nintendo.

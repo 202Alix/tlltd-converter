@@ -19,6 +19,7 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
   const [panY, setPanY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [touchDistance, setTouchDistance] = useState(0);
 
   const targetSize = CANVAS_SIZES[canvasSize];
   const targetAspectRatio = targetSize.width / targetSize.height;
@@ -131,6 +132,55 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
     setIsDragging(false);
   };
 
+  const getTouchDistance = (touches: any) => {
+    if (touches.length !== 2) return 0;
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      setIsDragging(true);
+      setDragOffset({ x: e.touches[0].clientX - panX, y: e.touches[0].clientY - panY });
+    } else if (e.touches.length === 2) {
+      setTouchDistance(getTouchDistance(e.touches));
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 1 && isDragging) {
+      e.preventDefault();
+      const zoom = (zoomPercent / 100) * baseScale;
+      const scaledWidth = sourceImageData.width * zoom;
+      const scaledHeight = sourceImageData.height * zoom;
+
+      const maxX = Math.max(viewportWidth - scaledWidth, 0);
+      const maxY = Math.max(viewportHeight - scaledHeight, 0);
+      const minX = Math.min(0, viewportWidth - scaledWidth);
+      const minY = Math.min(0, viewportHeight - scaledHeight);
+
+      const newX = Math.max(minX, Math.min(maxX, e.touches[0].clientX - dragOffset.x));
+      const newY = Math.max(minY, Math.min(maxY, e.touches[0].clientY - dragOffset.y));
+
+      setPanX(newX);
+      setPanY(newY);
+    } else if (e.touches.length === 2) {
+      const newDistance = getTouchDistance(e.touches);
+      if (touchDistance > 0) {
+        const scale = newDistance / touchDistance;
+        const newZoom = Math.max(10, Math.min(1000, zoomPercent * scale));
+        handleZoomChange(newZoom);
+        setTouchDistance(newDistance);
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+    setTouchDistance(0);
+  };
+
   const handleZoomChange = (newPercent: number) => {
     const clampedPercent = Math.max(10, Math.min(1000, newPercent));
     setZoomPercent(clampedPercent);
@@ -151,16 +201,20 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         className="w-full cursor-move bg-input"
-        style={{ maxWidth: '512px', height: 'auto' }}
+        style={{ maxWidth: '512px', height: 'auto', touchAction: 'none' }}
       />
-      <div className="flex gap-2 items-center" style={{ justifyContent: 'center', marginTop: '16px' }}>
+      <div className="flex gap-2 items-center" style={{ justifyContent: 'center', marginTop: '16px', width: '100%' }}>
         <button
           onClick={() => handleZoomChange(zoomPercent - 10)}
           title="Zoom out"
           className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 font-bold"
           style={{
-            color: '#2b2b2b'
+            color: '#2b2b2b',
+            flexShrink: 0
           }}
           onMouseEnter={(e) => (e.currentTarget.style.color = '#FF8000')}
           onMouseLeave={(e) => (e.currentTarget.style.color = '#2b2b2b')}
@@ -171,7 +225,7 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
           type="range"
           min="10"
           max="1000"
-          step="10"
+          step="1"
           value={zoomPercent}
           onChange={(e) => {
             const newValue = parseInt(e.target.value);
@@ -179,7 +233,6 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
             updateSliderFill(newValue, 10, 1000, e.currentTarget);
           }}
           style={{
-            maxWidth: '200px',
             accentColor: '#FF8000',
             appearance: 'none',
             width: '100%',
@@ -187,7 +240,9 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
             borderRadius: '4px',
             outline: 'none',
             WebkitAppearance: 'none',
-            '--range-fill': `${((zoomPercent - 10) / (1000 - 10)) * 100}%`
+            '--range-fill': `${((zoomPercent - 10) / (1000 - 10)) * 100}%`,
+            flex: 1,
+            minWidth: 0
           } as React.CSSProperties}
         />
         <button
@@ -195,7 +250,8 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
           title="Zoom in"
           className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 font-bold"
           style={{
-            color: '#2b2b2b'
+            color: '#2b2b2b',
+            flexShrink: 0
           }}
           onMouseEnter={(e) => (e.currentTarget.style.color = '#FF8000')}
           onMouseLeave={(e) => (e.currentTarget.style.color = '#2b2b2b')}
@@ -211,7 +267,8 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
           title="Reset zoom and position"
           className="px-4 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
           style={{
-            color: '#2b2b2b'
+            color: '#2b2b2b',
+            flexShrink: 0
           }}
           onMouseEnter={(e) => (e.currentTarget.style.color = '#FF8000')}
           onMouseLeave={(e) => (e.currentTarget.style.color = '#2b2b2b')}
