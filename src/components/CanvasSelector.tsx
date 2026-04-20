@@ -108,7 +108,7 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
         <h3 className="text-base font-bold" style={{ color: 'black', marginBottom: '12px' }}>
           Categories
         </h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '1rem' }}>
           {Object.entries(CANVAS_CATEGORIES).map(([key, category]) => (
             <button
               key={key}
@@ -156,7 +156,7 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
           <h3 className="text-base font-bold" style={{ color: 'black', marginBottom: '12px' }}>
             Types
           </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '1rem' }}>
             {Object.entries((currentCategoryData as any).subcategories).map(([key, subcategory]) => (
               <button
                 key={key}
@@ -205,7 +205,7 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
         <h3 className="text-base font-bold" style={{ color: 'black', marginBottom: '12px' }}>
           Base shapes
         </h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '1rem' }}>
           {itemsToDisplay.map((size) => (
             <button
               key={size}
@@ -256,10 +256,6 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
                 </p>
               </div>
             </button>
-          ))}
-          {/* Empty placeholder cells to fill 6-column grid */}
-          {Array.from({ length: 6 - itemsToDisplay.length }).map((_, i) => (
-            <div key={`empty-${i}`} style={{ aspectRatio: '1 / 1' }} />
           ))}
         </div>
       </div>

@@ -61,6 +61,11 @@ body {
   background-attachment: fixed;
   animation: diagonal-move 30s linear infinite;
   background-color: var(--background);
+  min-height: 100vh;
+}
+
+html {
+  height: 100%;
 }
 
 
