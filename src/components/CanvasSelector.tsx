@@ -108,7 +108,7 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
         <h3 className="text-base font-bold" style={{ color: 'black', marginBottom: '12px' }}>
           Categories
         </h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 120px))', gap: '1rem', justifyContent: 'center' }}>
+        <div className="canvas-selector-grid" style={{ display: 'grid', gap: '1rem', justifyContent: 'center' }}>
           {Object.entries(CANVAS_CATEGORIES).map(([key, category]) => (
             <button
               key={key}
@@ -156,7 +156,7 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
           <h3 className="text-base font-bold" style={{ color: 'black', marginBottom: '12px' }}>
             Types
           </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 120px))', gap: '1rem', justifyContent: 'center' }}>
+          <div className="canvas-selector-grid" style={{ display: 'grid', gap: '1rem', justifyContent: 'center' }}>
             {Object.entries((currentCategoryData as any).subcategories).map(([key, subcategory]) => (
               <button
                 key={key}
@@ -205,7 +205,7 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
         <h3 className="text-base font-bold" style={{ color: 'black', marginBottom: '12px' }}>
           Base shapes
         </h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 120px))', gap: '1rem', justifyContent: 'center' }}>
+        <div className="canvas-selector-grid" style={{ display: 'grid', gap: '1rem', justifyContent: 'center' }}>
           {itemsToDisplay.map((size) => (
             <button
               key={size}

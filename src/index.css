@@ -54,6 +54,10 @@ input[type="range"]::-moz-range-track {
   }
 }
 
+html {
+  height: 100%;
+}
+
 body {
   background-image: url('./assets/bg-pattern.png');
   background-size: 400px 400px;
@@ -62,10 +66,8 @@ body {
   animation: diagonal-move 30s linear infinite;
   background-color: var(--background);
   min-height: 100vh;
-}
-
-html {
-  height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 
@@ -261,4 +263,24 @@ select {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
+}
+
+/* Responsive grid for canvas selector cards */
+/* Desktop: 6 cards per row */
+.canvas-selector-grid {
+  grid-template-columns: repeat(6, 1fr) !important;
+}
+
+/* Tablet/Intermediate: 4 cards per row */
+@media (max-width: 1024px) {
+  .canvas-selector-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+}
+
+/* Mobile: 2 cards per row */
+@media (max-width: 640px) {
+  .canvas-selector-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
 }
