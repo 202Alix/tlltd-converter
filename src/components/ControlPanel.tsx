@@ -112,7 +112,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   const handleMaxColorsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value);
     setTempMaxColors(value);
-    const min = paletteMode === 'colorRange' ? 4 : 4;
+    const min = 1;
     const max = paletteMode === 'colorRange' ? 256 : 84;
     updateSliderFill(value, min, max, e.currentTarget);
   };
@@ -136,50 +136,14 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   const handleMaxColorsPointerUp = () => {
     if (isDraggingRef.current) {
       isDraggingRef.current = false;
-      // In color range mode, 256 means unlimited (null). In default palette mode, send the actual value.
-      onMaxColorsChange(paletteMode === 'colorRange' && tempMaxColors === 256 ? null : tempMaxColors);
+      // Send null (unlimited) when at max value for the current palette mode
+      const isUnlimited = paletteMode === 'colorRange' ? tempMaxColors === 256 : tempMaxColors === 84;
+      onMaxColorsChange(isUnlimited ? null : tempMaxColors);
     }
   };
 
   return (
     <div className="space-y-6">
-      {/* Canvas Size */}
-      <div>
-        <div className="flex items-center gap-2 mb-2">
-          <h3 className="text-base font-bold" style={{ color: 'black' }}>Canvas Size</h3>
-          <Tooltip text="Choose the canvas corresponding to the one in game." />
-        </div>
-        <select
-          value={selectedCanvasSize}
-          onChange={(e) => onCanvasSizeChange(e.target.value as CanvasSizeKey)}
-          className="w-full px-4 py-2 rounded-2xl bg-input text-foreground hover:opacity-90 transition-colors font-medium"
-          style={{ boxShadow: '0 6px 0 #eeedef' }}
-        >
-          {(() => {
-            const sizes = Object.entries(CANVAS_SIZES);
-            const selectedEntry = sizes.find(([key]) => key === selectedCanvasSize);
-            const otherEntries = sizes
-              .filter(([key]) => key !== selectedCanvasSize)
-              .sort((a, b) => {
-                const areaA = a[1].width * a[1].height;
-                const areaB = b[1].width * b[1].height;
-                return areaB - areaA; // Descending by size
-              });
-
-            const sortedEntries = selectedEntry ? [selectedEntry, ...otherEntries] : otherEntries;
-
-            return sortedEntries.map(([key, size]) => (
-              <option key={key} value={key}>
-                {key} - {size.width}x{size.height}
-              </option>
-            ));
-          })()}
-        </select>
-        <p style={{ fontSize: '12px', color: '#717182', marginTop: '8px' }}>
-          Measurements might be slightly inaccurate. If you notice errors, please report them via the <button onClick={() => onPageChange('contact')} style={{ color: '#FF8000', textDecoration: 'underline', cursor: 'pointer', background: 'none', border: 'none', padding: 0, font: 'inherit' }}>contact page</button>.
-        </p>
-      </div>
-
       {/* Quantization Method and Palette Mode */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
         <div>
@@ -251,7 +215,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               </div>
               <input
                 type="range"
-                min="4"
+                min="1"
                 max="256"
                 step="1"
                 value={tempMaxColors}
@@ -260,7 +224,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 onPointerUp={handleMaxColorsPointerUp}
                 className="w-full h-3 bg-linear-to-r from-secondary to-accent rounded-full appearance-none cursor-pointer accent-primary"
                 style={{
-                  '--range-fill': `${((tempMaxColors - 4) / (256 - 4)) * 100}%`
+                  '--range-fill': `${((tempMaxColors - 1) / (256 - 1)) * 100}%`
                 } as React.CSSProperties}
               />
             </>
@@ -268,13 +232,13 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             <>
               <div className="flex items-center gap-2 mb-2">
                 <h3 className="text-base font-bold" style={{ color: 'black' }}>
-                  Max Colors: <span style={{ color: 'black' }}>{tempMaxColors}</span>
+                  Max Colors: <span style={{ color: 'black' }}>{tempMaxColors === 84 ? 'Unlimited' : tempMaxColors}</span>
                 </h3>
-                <Tooltip text="Limit colors for simpler results." />
+                <Tooltip text="Limit colors for simpler results. Put the slider at the end for unlimited colors." />
               </div>
               <input
                 type="range"
-                min="4"
+                min="1"
                 max="84"
                 step="1"
                 value={tempMaxColors}
@@ -283,7 +247,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 onPointerUp={handleMaxColorsPointerUp}
                 className="w-full h-3 bg-linear-to-r from-secondary to-accent rounded-full appearance-none cursor-pointer accent-primary"
                 style={{
-                  '--range-fill': `${((tempMaxColors - 4) / (84 - 4)) * 100}%`
+                  '--range-fill': `${((tempMaxColors - 1) / (84 - 1)) * 100}%`
                 } as React.CSSProperties}
               />
             </>

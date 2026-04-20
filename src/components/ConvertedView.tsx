@@ -441,12 +441,9 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
             onClick={() => setToolMode('pan')}
             className="px-3 py-2 rounded-lg transition-all font-bold flex items-center gap-2"
             style={{
-              backgroundColor: '#FF8000',
-              color: 'white',
-              border: toolMode === 'pan' ? '3px solid transparent' : '3px solid transparent',
-              backgroundImage: toolMode === 'pan' ? 'linear-gradient(#FF8000, #FF8000), linear-gradient(to bottom, #FFE400, #F40436)' : 'none',
-              backgroundOrigin: 'border-box',
-              backgroundClip: 'padding-box, border-box'
+              backgroundColor: toolMode === 'pan' ? '#FF8000' : '#FFDA85',
+              color: toolMode === 'pan' ? 'white' : 'black',
+              border: 'none',
             }}
             title="Pan mode (drag to move)"
           >
@@ -457,12 +454,9 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
             onClick={() => setToolMode(toolMode === 'eyedropper' ? 'pan' : 'eyedropper')}
             className="px-3 py-2 rounded-lg transition-all font-bold flex items-center gap-2"
             style={{
-              backgroundColor: '#FF8000',
-              color: 'white',
-              border: toolMode === 'eyedropper' ? '3px solid transparent' : '3px solid transparent',
-              backgroundImage: toolMode === 'eyedropper' ? 'linear-gradient(#FF8000, #FF8000), linear-gradient(to bottom, #FFE400, #F40436)' : 'none',
-              backgroundOrigin: 'border-box',
-              backgroundClip: 'padding-box, border-box'
+              backgroundColor: toolMode === 'eyedropper' ? '#FF8000' : '#FFDA85',
+              color: toolMode === 'eyedropper' ? 'white' : 'black',
+              border: 'none',
             }}
             title="Eyedropper mode (click to pick color)"
           >
@@ -473,12 +467,9 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
             onClick={() => setToolMode(toolMode === 'colorFilter' ? 'pan' : 'colorFilter')}
             className="px-3 py-2 rounded-lg transition-all font-bold flex items-center gap-2"
             style={{
-              backgroundColor: '#FF8000',
-              color: 'white',
-              border: toolMode === 'colorFilter' ? '3px solid transparent' : '3px solid transparent',
-              backgroundImage: toolMode === 'colorFilter' ? 'linear-gradient(#FF8000, #FF8000), linear-gradient(to bottom, #FFE400, #F40436)' : 'none',
-              backgroundOrigin: 'border-box',
-              backgroundClip: 'padding-box, border-box'
+              backgroundColor: toolMode === 'colorFilter' ? '#FF8000' : '#FFDA85',
+              color: toolMode === 'colorFilter' ? 'white' : 'black',
+              border: 'none',
             }}
             title="Color filter mode (click to select color to highlight)"
           >
@@ -494,12 +485,9 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
             title="Toggle grid overlay"
             className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
             style={{
-              backgroundColor: '#FF8000',
-              color: 'white',
-              border: showGrid ? '3px solid transparent' : '3px solid transparent',
-              backgroundImage: showGrid ? 'linear-gradient(#FF8000, #FF8000), linear-gradient(to bottom, #FFE400, #F40436)' : 'none',
-              backgroundOrigin: 'border-box',
-              backgroundClip: 'padding-box, border-box'
+              backgroundColor: showGrid ? '#FF8000' : '#FFDA85',
+              color: showGrid ? 'white' : 'black',
+              border: 'none',
             }}
           >
             <Grid3x3 strokeWidth={3} className="w-5 h-5" />
@@ -523,8 +511,8 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
             title="Download as PNG"
             className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold disabled:opacity-50"
             style={{
-              backgroundColor: '#FF8000',
-              color: 'white'
+              backgroundColor: '#FFDA85',
+              color: 'black',
             }}
             disabled={!convertedImageData}
           >

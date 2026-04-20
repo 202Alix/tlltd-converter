@@ -1,5 +1,7 @@
 import { quantize, QuantizationMethod } from './quantizer';
 import { colorDistance, hexToRgb } from './colorUtils';
+import { loadMask, isPixelMasked, getMaskPixelIndex } from './maskManager';
+import { CANVAS_SIZES_WITH_MASKS } from './palettes';
 
 export interface ImageProcessOptions {
   width: number;
@@ -13,6 +15,7 @@ export interface ImageProcessOptions {
   sourceWidth?: number;
   sourceHeight?: number;
   detailLevel?: 1 | 2 | 4 | 8 | 16;
+  canvasSize?: string; // Canvas size for mask lookup
 }
 
 // Load an image file and return as ImageData
@@ -157,10 +160,10 @@ function extractDiverseColors(imageData: ImageData, maxColors: number): string[]
 }
 
 // Process image: resize and optionally quantize based on palette mode
-export function processImage(
+export async function processImage(
   sourceData: ImageData,
   options: ImageProcessOptions
-): ImageData {
+): Promise<ImageData> {
   const detailLevel = options.detailLevel || 1;
 
   // Resize to target dimensions first
@@ -194,11 +197,47 @@ export function processImage(
   }
 
   // If detail level > 1, downsample using most common color, then upscale
+  let result: ImageData;
   if (detailLevel > 1) {
-    return downsampleAndUpscale(quantized, options.width, options.height, detailLevel);
+    result = downsampleAndUpscale(quantized, options.width, options.height, detailLevel);
+  } else {
+    result = quantized;
   }
 
-  return quantized;
+  // Apply mask if this canvas type needs one
+  if (options.canvasSize && CANVAS_SIZES_WITH_MASKS.has(options.canvasSize as any)) {
+    const mask = await loadMask(options.canvasSize);
+    if (mask) {
+      result = applyMask(result, mask);
+    }
+  }
+
+  return result;
+}
+
+// Apply mask to image: set masked-out pixels (black in mask) to fully transparent
+function applyMask(imageData: ImageData, maskData: ImageData): ImageData {
+  const resultData = new ImageData(imageData.data.slice(), imageData.width, imageData.height);
+  const imgData = resultData.data;
+
+  // Ensure mask is same size as image
+  if (maskData.width !== imageData.width || maskData.height !== imageData.height) {
+    console.warn('Mask size does not match image size, skipping mask application');
+    return resultData;
+  }
+
+  // Iterate through each pixel
+  for (let i = 0; i < imgData.length; i += 4) {
+    const pixelIndex = i;
+
+    // Check if this pixel should be masked (white in mask = show, black = hide)
+    if (!isPixelMasked(maskData, pixelIndex)) {
+      // Black in mask = make pixel transparent
+      imgData[pixelIndex + 3] = 0; // Set alpha to 0
+    }
+  }
+
+  return resultData;
 }
 
 // Downsample by finding most common color in each block, then upscale

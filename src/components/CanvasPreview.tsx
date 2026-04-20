@@ -182,7 +182,7 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
   };
 
   const handleZoomChange = (newPercent: number) => {
-    const clampedPercent = Math.max(10, Math.min(1000, newPercent));
+    const clampedPercent = Math.max(10, Math.min(1000, Math.round(newPercent)));
     setZoomPercent(clampedPercent);
   };
 

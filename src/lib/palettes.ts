@@ -21,14 +21,150 @@ export const PALETTES = {
 } as const;
 
 export const CANVAS_SIZES = {
-  'TV Screen': { width: 255, height: 131 },
-  'Food': { width: 300, height: 300 },
-  'Object': { width: 306, height: 306 },
-  'Book': { width: 180, height: 255 },
-  'Vinyl': { width: 180, height: 256 },
-  'Switch': { width: 256, height: 134 },
-  'Pet': { width: 265, height: 265 },
+  // Food
+  'Food': { width: 256, height: 256 },
+
+  // Clothing - Tops
+  'Basic tee': { width: 256, height: 256 },
+  'Tank top': { width: 300, height: 300 },
+  'Short-sleeve tee': { width: 300, height: 300 },
+  'Long-sleeve tee': { width: 300, height: 300 },
+
+  // Clothing - Dresses
+  'Sleeveless dress': { width: 300, height: 300 },
+  'Short-sleeve dress': { width: 300, height: 300 },
+  'Long-sleeve dress': { width: 300, height: 300 },
+  'Robe': { width: 300, height: 300 },
+  'Dress': { width: 300, height: 300 },
+
+  // Clothing - Bottoms
+  'Skirt': { width: 300, height: 300 },
+  'Long Skirt': { width: 300, height: 300 },
+  'Shorts': { width: 300, height: 300 },
+  'Pants': { width: 300, height: 300 },
+
+  // Clothing - Headwear
+  'Cap': { width: 300, height: 300 },
+  'Headwear': { width: 300, height: 300 },
+  'Top hat': { width: 300, height: 300 },
+
+  // Treasures
+  'Anything': { width: 256, height: 256 },
+  'Books': { width: 180, height: 256 },
+  'Music': { width: 256, height: 256 },
+  'Videos': { width: 256, height: 131 },
+  'Video games': { width: 256, height: 144 },
+  'Pets': { width: 256, height: 256 },
+
+  // Interior/Exterior - Interior
+  'Interior': { width: 300, height: 300 },
+
+  // Interior/Exterior - Exterior & Objects
+  'Triangular roof': { width: 300, height: 300 },
+  'Pyramid roof': { width: 300, height: 300 },
+  'Conical roof': { width: 300, height: 300 },
+  'Domed roof': { width: 300, height: 300 },
+  'Box': { width: 256, height: 130 },
+  'Cylinder': { width: 300, height: 300 },
+  'Cone': { width: 300, height: 300 },
+  'Pyramid': { width: 300, height: 300 },
+  'Octahedron': { width: 300, height: 300 },
+  'Upright board': { width: 256, height: 256 },
+  'Flat board': { width: 256, height: 256 },
+  'Dome': { width: 300, height: 300 },
+  'Egg': { width: 300, height: 300 },
+  'Sphere': { width: 300, height: 300 },
+
+  // Landscaping
+  'Landscaping': { width: 256, height: 256 },
 } as const;
 
 export type CanvasSizeKey = keyof typeof CANVAS_SIZES;
-export type PaletteKey = keyof typeof PALETTES;
+
+export const CANVAS_CATEGORIES = {
+  Food: {
+    name: 'Food',
+    color: '#FFD700',
+    items: ['Food'] as CanvasSizeKey[],
+  },
+  Clothing: {
+    name: 'Clothing',
+    color: '#FF69B4',
+    subcategories: {
+      Tops: {
+        name: 'Tops',
+        items: ['Basic tee', 'Tank top', 'Short-sleeve tee', 'Long-sleeve tee'] as CanvasSizeKey[],
+      },
+      Dresses: {
+        name: 'Dresses',
+        items: ['Sleeveless dress', 'Short-sleeve dress', 'Long-sleeve dress', 'Robe', 'Dress'] as CanvasSizeKey[],
+      },
+      Bottoms: {
+        name: 'Bottoms',
+        items: ['Skirt', 'Long Skirt', 'Shorts', 'Pants'] as CanvasSizeKey[],
+      },
+      Headwear: {
+        name: 'Headwear',
+        items: ['Cap', 'Headwear', 'Top hat'] as CanvasSizeKey[],
+      },
+    },
+  },
+  Treasures: {
+    name: 'Treasures',
+    color: '#9370DB',
+    items: ['Anything', 'Books', 'Music', 'Videos', 'Video games', 'Pets'] as CanvasSizeKey[],
+  },
+  'Interior/Exterior': {
+    name: 'Interior/Exterior',
+    color: '#87CEEB',
+    items: ['Interior', 'Triangular roof', 'Pyramid roof', 'Conical roof', 'Domed roof', 'Box', 'Cylinder', 'Cone', 'Pyramid', 'Octahedron', 'Upright board', 'Flat board', 'Dome', 'Egg', 'Sphere'] as CanvasSizeKey[],
+  },
+  Objects: {
+    name: 'Objects',
+    color: '#90EE90',
+    items: ['Box', 'Cylinder', 'Cone', 'Pyramid', 'Octahedron', 'Upright board', 'Flat board', 'Dome', 'Egg', 'Sphere', 'Triangular roof', 'Pyramid roof', 'Conical roof', 'Domed roof'] as CanvasSizeKey[],
+  },
+  Landscaping: {
+    name: 'Landscaping',
+    color: '#8B4513',
+    items: ['Landscaping'] as CanvasSizeKey[],
+  },
+} as const;
+
+// Canvas sizes that require masks (non-rectangular shapes)
+export const CANVAS_SIZES_WITH_MASKS = new Set<CanvasSizeKey>([
+  // Clothing - excluding Basic tee (it's a square)
+  'Tank top',
+  'Short-sleeve tee',
+  'Long-sleeve tee',
+  'Sleeveless dress',
+  'Short-sleeve dress',
+  'Long-sleeve dress',
+  'Robe',
+  'Dress',
+  'Skirt',
+  'Long Skirt',
+  'Shorts',
+  'Pants',
+  'Cap',
+  'Headwear',
+  'Top hat',
+
+  // Interior/Exterior - most except Interior, Upright board, Flat board
+  'Triangular roof',
+  'Pyramid roof',
+  'Conical roof',
+  'Domed roof',
+  'Box',
+  'Cylinder',
+  'Cone',
+  'Pyramid',
+  'Octahedron',
+  'Dome',
+  'Egg',
+  'Sphere',
+
+  // Objects - excluding Upright board, Flat board (they're squares)
+  // (same as Interior/Exterior Exterior items)
+  // Already listed above, so no duplicates needed
+]);

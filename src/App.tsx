@@ -6,6 +6,7 @@ import { ControlPanel } from './components/ControlPanel';
 import { CanvasPreview } from './components/CanvasPreview';
 import { ConvertedView } from './components/ConvertedView';
 import { Footer } from './components/Footer';
+import { CanvasSelector } from './components/CanvasSelector';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import { TermsOfService } from './pages/TermsOfService';
 import { License } from './pages/License';
@@ -55,7 +56,7 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState<PageType>('app');
   const [sourceImageData, setSourceImageData] = useState<ImageData | null>(null);
   const [originalImageSize, setOriginalImageSize] = useState<{ width: number; height: number } | null>(null);
-  const [selectedCanvasSize, setSelectedCanvasSize] = useState<CanvasSizeKey>('Object');
+  const [selectedCanvasSize, setSelectedCanvasSize] = useState<CanvasSizeKey>('Anything');
   const [quantizationMethod, setQuantizationMethod] = useState<QuantizationMethod>('nearest-color');
   const [convertedImageData, setConvertedImageData] = useState<ImageData | null>(null);
   const [showGrid, setShowGrid] = useState(false);
@@ -82,7 +83,7 @@ export default function App() {
     processConversion(imageData, selectedCanvasSize, quantizationMethod, 0, 0, originalSize.width, originalSize.height, detailLevel);
   };
 
-  const processConversion = (
+  const processConversion = async (
     source: ImageData,
     canvasSize: CanvasSizeKey,
     method: QuantizationMethod,
@@ -94,7 +95,7 @@ export default function App() {
   ) => {
     const canvasSpec = CANVAS_SIZES[canvasSize];
     try {
-      const result = processImage(source, {
+      const result = await processImage(source, {
         width: canvasSpec.width,
         height: canvasSpec.height,
         paletteColors: PALETTES.palette1.colors,
@@ -106,6 +107,7 @@ export default function App() {
         sourceWidth: Math.round(cropWidth),
         sourceHeight: Math.round(cropHeight),
         detailLevel: detail,
+        canvasSize: canvasSize,
       });
       setConvertedImageData(result);
     } catch (error) {
@@ -199,9 +201,24 @@ export default function App() {
           if (state.imageBase64) {
             const imageData = await base64ToImageData(state.imageBase64);
             if (imageData) {
+              // Migrate old canvas size keys to new ones
+              const canvasSizeMigration: Record<string, CanvasSizeKey> = {
+                'Object': 'Anything',
+                'TV Screen': 'Videos',
+                'Book': 'Books',
+                'Vinyl': 'Music',
+                'Switch': 'Video games',
+                'Pet': 'Pets',
+              };
+
+              let migratedCanvasSize = state.selectedCanvasSize || 'Anything';
+              if (migratedCanvasSize in canvasSizeMigration) {
+                migratedCanvasSize = canvasSizeMigration[migratedCanvasSize as keyof typeof canvasSizeMigration];
+              }
+
               setSourceImageData(imageData);
               setOriginalImageSize(state.originalImageSize);
-              setSelectedCanvasSize(state.selectedCanvasSize || 'Object');
+              setSelectedCanvasSize(migratedCanvasSize as CanvasSizeKey);
               setQuantizationMethod(state.quantizationMethod || 'nearest-color');
               setPaletteMode(state.paletteMode || 'default');
               setMaxColors(state.maxColors || null);
@@ -209,27 +226,30 @@ export default function App() {
               setDetailLevel(state.detailLevel || 1);
 
               // Process the image with loaded settings
-              const canvasSize = (state.selectedCanvasSize || 'Object') as CanvasSizeKey;
+              const canvasSize = migratedCanvasSize as CanvasSizeKey;
               const method = (state.quantizationMethod || 'nearest-color') as QuantizationMethod;
               const cropParams = state.cropParams || { x: 0, y: 0, width: 306, height: 306 };
               const canvasSpec = CANVAS_SIZES[canvasSize];
-              try {
-                const result = processImage(imageData, {
-                  width: canvasSpec.width,
-                  height: canvasSpec.height,
-                  paletteColors: PALETTES.palette1.colors,
-                  quantizationMethod: method,
-                  paletteMode: state.paletteMode || 'default',
-                  maxColors: state.maxColors || null,
-                  sourceX: Math.round(cropParams.x),
-                  sourceY: Math.round(cropParams.y),
-                  sourceWidth: Math.round(cropParams.width),
-                  sourceHeight: Math.round(cropParams.height),
-                  detailLevel: state.detailLevel || 1,
-                });
-                setConvertedImageData(result);
-              } catch (error) {
-                console.error('Error processing loaded image:', error);
+              if (canvasSpec) {
+                try {
+                  const result = await processImage(imageData, {
+                    width: canvasSpec.width,
+                    height: canvasSpec.height,
+                    paletteColors: PALETTES.palette1.colors,
+                    quantizationMethod: method,
+                    paletteMode: state.paletteMode || 'default',
+                    maxColors: state.maxColors || null,
+                    sourceX: Math.round(cropParams.x),
+                    sourceY: Math.round(cropParams.y),
+                    sourceWidth: Math.round(cropParams.width),
+                    sourceHeight: Math.round(cropParams.height),
+                    detailLevel: state.detailLevel || 1,
+                    canvasSize: canvasSize,
+                  });
+                  setConvertedImageData(result);
+                } catch (error) {
+                  console.error('Error processing loaded image:', error);
+                }
               }
             }
           }
@@ -361,6 +381,14 @@ export default function App() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+            {/* Canvas Selection */}
+            <div className="rounded-3xl" style={{ backgroundColor: 'white', boxShadow: '0 6px 0 #FFC336', borderRadius: '24px', padding: '16px' }}>
+              <CanvasSelector
+                selectedCanvasSize={selectedCanvasSize}
+                onCanvasSizeChange={handleCanvasSizeChange}
+              />
+            </div>
+
             {/* Controls */}
             <div className="rounded-3xl" style={{ backgroundColor: 'white', boxShadow: '0 6px 0 #FFC336', borderRadius: '24px', padding: '16px' }}>
               <ControlPanel
