@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { HelpCircle } from 'lucide-react';
 import { CANVAS_SIZES, CanvasSizeKey } from '../lib/palettes';
 import { QuantizationMethod } from '../lib/quantizer';
+import { DETAIL_LEVELS, DetailLevel } from '../lib/imageProcessor';
 
 interface ControlPanelProps {
   selectedCanvasSize: CanvasSizeKey;
@@ -12,8 +13,8 @@ interface ControlPanelProps {
   onMaxColorsChange: (count: number | null) => void;
   quantizationMethod: QuantizationMethod;
   onQuantizationMethodChange: (method: QuantizationMethod) => void;
-  detailLevel: 1 | 2 | 4 | 8 | 16;
-  onDetailLevelChange: (level: 1 | 2 | 4 | 8 | 16) => void;
+  detailLevel: DetailLevel;
+  onDetailLevelChange: (level: DetailLevel) => void;
   onPageChange: (page: 'contact') => void;
 }
 
@@ -56,20 +57,6 @@ const Tooltip: React.FC<TooltipProps> = ({ text }) => {
   );
 };
 
-interface ControlPanelProps {
-  selectedCanvasSize: CanvasSizeKey;
-  onCanvasSizeChange: (size: CanvasSizeKey) => void;
-  paletteMode: 'default' | 'colorRange';
-  onPaletteModeChange: (mode: 'default' | 'colorRange') => void;
-  maxColors: number | null;
-  onMaxColorsChange: (count: number | null) => void;
-  quantizationMethod: QuantizationMethod;
-  onQuantizationMethodChange: (method: QuantizationMethod) => void;
-  detailLevel: 1 | 2 | 4 | 8 | 16;
-  onDetailLevelChange: (level: 1 | 2 | 4 | 8 | 16) => void;
-  onPageChange: (page: 'contact') => void;
-}
-
 export const ControlPanel: React.FC<ControlPanelProps> = ({
   selectedCanvasSize,
   onCanvasSizeChange,
@@ -83,7 +70,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   onDetailLevelChange,
   onPageChange,
 }) => {
-  const [tempDetailLevel, setTempDetailLevel] = useState<number>([1, 2, 4, 8, 16].indexOf(detailLevel));
+  const [tempDetailLevel, setTempDetailLevel] = useState<number>(DETAIL_LEVELS.indexOf(detailLevel));
   const [tempMaxColors, setTempMaxColors] = useState<number>(maxColors === null ? 256 : maxColors);
   const isDraggingRef = useRef(false);
 
@@ -106,7 +93,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   const handleDetailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value);
     setTempDetailLevel(value);
-    updateSliderFill(value, 0, 4, e.currentTarget);
+    updateSliderFill(value, 0, 5, e.currentTarget);
   };
 
   const handleMaxColorsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -124,8 +111,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   const handleDetailPointerUp = () => {
     if (isDraggingRef.current) {
       isDraggingRef.current = false;
-      const levels: (1 | 2 | 4 | 8 | 16)[] = [1, 2, 4, 8, 16];
-      onDetailLevelChange(levels[tempDetailLevel]);
+      onDetailLevelChange(DETAIL_LEVELS[tempDetailLevel]);
     }
   };
 
@@ -184,14 +170,14 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         <div>
           <div className="flex items-center gap-2 mb-2">
             <h3 className="text-base font-bold" style={{ color: 'black', fontSize: '20px' }}>
-              Block Size: <span style={{ color: 'black' }}>x{[1, 2, 4, 8, 16][tempDetailLevel]}</span>
+              Block Size: <span style={{ color: 'black' }}>x{DETAIL_LEVELS[tempDetailLevel]}</span>
             </h3>
-            <Tooltip text="Larger blocks = simpler image. x1 = tiny detailed blocks, x16 = large simple blocks." />
+            <Tooltip text="Larger blocks = simpler image. x1 = tiny detailed blocks, x27 = large simple blocks." />
           </div>
           <input
             type="range"
             min="0"
-            max="4"
+            max="5"
             step="1"
             value={tempDetailLevel}
             onChange={handleDetailChange}
@@ -199,7 +185,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             onPointerUp={handleDetailPointerUp}
             className="w-full h-3 bg-linear-to-r from-secondary to-accent rounded-full appearance-none cursor-pointer accent-primary"
             style={{
-              '--range-fill': `${(tempDetailLevel / 4) * 100}%`
+              '--range-fill': `${(tempDetailLevel / 5) * 100}%`
             } as React.CSSProperties}
           />
         </div>

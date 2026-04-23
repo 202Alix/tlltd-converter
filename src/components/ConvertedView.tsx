@@ -57,6 +57,13 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
   const paletteColors = PALETTES.palette1.colors;
   const targetSize = CANVAS_SIZES[canvasSize];
   const targetAspectRatio = targetSize.width / targetSize.height;
+  const filterRgb = filterColor
+    ? {
+        r: parseInt(filterColor.slice(1, 3), 16),
+        g: parseInt(filterColor.slice(3, 5), 16),
+        b: parseInt(filterColor.slice(5, 7), 16),
+      }
+    : null;
 
   // Fixed canvas size matching target aspect ratio - 2x larger
   const canvasWidth = 600;
@@ -193,19 +200,15 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
         const srcData = convertedImageData.data;
         const dstData = filteredImageData.data;
 
-        // Parse filter color hex
-        const r = parseInt(filterColor.slice(1, 3), 16);
-        const g = parseInt(filterColor.slice(3, 5), 16);
-        const b = parseInt(filterColor.slice(5, 7), 16);
-
         // Copy pixels, modifying alpha based on match
         for (let i = 0; i < srcData.length; i += 4) {
           dstData[i] = srcData[i];     // R
           dstData[i + 1] = srcData[i + 1]; // G
           dstData[i + 2] = srcData[i + 2]; // B
 
-          // If color matches, keep full opacity; otherwise reduce to 20%
-          if (srcData[i] === r && srcData[i + 1] === g && srcData[i + 2] === b) {
+          if (srcData[i + 3] === 0) {
+            dstData[i + 3] = 0;
+          } else if (filterRgb && srcData[i] === filterRgb.r && srcData[i + 1] === filterRgb.g && srcData[i + 2] === filterRgb.b) {
             dstData[i + 3] = 255;
           } else {
             dstData[i + 3] = 51; // 20% of 255
@@ -227,7 +230,7 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
       ctx.strokeStyle = 'rgba(255, 128, 0, 0.3)';
       ctx.lineWidth = 1;
 
-      // Vertical lines
+      // Base grid, always visible when enabled.
       for (let x = 0; x <= convertedImageData.width; x++) {
         const screenX = panX + x * zoom;
         if (screenX >= 0 && screenX <= canvas.width) {
@@ -238,7 +241,6 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
         }
       }
 
-      // Horizontal lines
       for (let y = 0; y <= convertedImageData.height; y++) {
         const screenY = panY + y * zoom;
         if (screenY >= 0 && screenY <= canvas.height) {
@@ -246,6 +248,91 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
           ctx.moveTo(panX, screenY);
           ctx.lineTo(Math.min(panX + scaledWidth, canvas.width), screenY);
           ctx.stroke();
+        }
+      }
+
+      // Extra edge emphasis only while filtering a color.
+      if (toolMode === 'colorFilter' && filterRgb) {
+        const data = convertedImageData.data;
+        const inBounds = (x: number, y: number) => x >= 0 && y >= 0 && x < convertedImageData.width && y < convertedImageData.height;
+        const pixelIndex = (x: number, y: number) => (y * convertedImageData.width + x) * 4;
+        const isVisible = (x: number, y: number) => inBounds(x, y) && data[pixelIndex(x, y) + 3] > 0;
+        const isHighlighted = (x: number, y: number) => {
+          if (!isVisible(x, y)) return false;
+          const index = pixelIndex(x, y);
+          return data[index] === filterRgb.r && data[index + 1] === filterRgb.g && data[index + 2] === filterRgb.b;
+        };
+        const samePixel = (ax: number, ay: number, bx: number, by: number) => {
+          if (!inBounds(ax, ay) || !inBounds(bx, by)) return false;
+          const aIndex = pixelIndex(ax, ay);
+          const bIndex = pixelIndex(bx, by);
+          return data[aIndex] === data[bIndex]
+            && data[aIndex + 1] === data[bIndex + 1]
+            && data[aIndex + 2] === data[bIndex + 2]
+            && data[aIndex + 3] === data[bIndex + 3];
+        };
+        const edgeAlpha = (ax: number, ay: number, bx: number, by: number) => {
+          const aVisible = isVisible(ax, ay);
+          const bVisible = isVisible(bx, by);
+
+          if (!aVisible && !bVisible) {
+            return 0;
+          }
+
+          if (aVisible && bVisible && samePixel(ax, ay, bx, by)) {
+            return 0;
+          }
+
+          const aHighlighted = isHighlighted(ax, ay);
+          const bHighlighted = isHighlighted(bx, by);
+
+          if (aHighlighted !== bHighlighted) {
+            return 1;
+          }
+
+          if (aHighlighted || bHighlighted) {
+            return 1;
+          }
+
+          return 0;
+        };
+
+        ctx.fillStyle = 'rgba(255, 128, 0, 1)';
+
+        for (let x = 0; x <= convertedImageData.width; x++) {
+          const screenX = panX + x * zoom;
+          if (screenX < 0 || screenX > canvas.width) continue;
+
+          for (let y = 0; y < convertedImageData.height; y++) {
+            const alpha = x === 0
+              ? edgeAlpha(0, y, -1, y)
+              : x === convertedImageData.width
+                ? edgeAlpha(convertedImageData.width - 1, y, -1, y)
+                : edgeAlpha(x - 1, y, x, y);
+
+            if (alpha <= 0) continue;
+
+            ctx.fillStyle = `rgba(255, 128, 0, ${alpha})`;
+            ctx.fillRect(screenX - 0.5, panY + y * zoom, 1, Math.max(1, zoom));
+          }
+        }
+
+        for (let y = 0; y <= convertedImageData.height; y++) {
+          const screenY = panY + y * zoom;
+          if (screenY < 0 || screenY > canvas.height) continue;
+
+          for (let x = 0; x < convertedImageData.width; x++) {
+            const alpha = y === 0
+              ? edgeAlpha(x, 0, x, -1)
+              : y === convertedImageData.height
+                ? edgeAlpha(x, convertedImageData.height - 1, x, -1)
+                : edgeAlpha(x, y - 1, x, y);
+
+            if (alpha <= 0) continue;
+
+            ctx.fillStyle = `rgba(255, 128, 0, ${alpha})`;
+            ctx.fillRect(panX + x * zoom, screenY - 0.5, Math.max(1, zoom), 1);
+          }
         }
       }
     }

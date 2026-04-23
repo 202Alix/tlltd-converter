@@ -14,6 +14,7 @@ import { Contact } from './pages/Contact';
 import { processImage } from './lib/imageProcessor';
 import { CANVAS_SIZES, PALETTES, CanvasSizeKey } from './lib/palettes';
 import { QuantizationMethod } from './lib/quantizer';
+import { DetailLevel } from './lib/imageProcessor';
 
 type PageType = 'app' | 'privacy' | 'terms' | 'license' | 'contact';
 
@@ -64,7 +65,7 @@ export default function App() {
   const [paletteMode, setPaletteMode] = useState<'default' | 'colorRange'>('default');
   const [maxColors, setMaxColors] = useState<number | null>(null);
   const [selectedColorFilter, setSelectedColorFilter] = useState<string | null>(null);
-  const [detailLevel, setDetailLevel] = useState<1 | 2 | 4 | 8 | 16>(1);
+  const [detailLevel, setDetailLevel] = useState<DetailLevel>(1);
 
   // Debounce detail level changes to reduce computation
   useEffect(() => {
@@ -91,7 +92,7 @@ export default function App() {
     cropY: number,
     cropWidth: number,
     cropHeight: number,
-    detail: 1 | 2 | 4 | 8 | 16
+    detail: DetailLevel
   ) => {
     const canvasSpec = CANVAS_SIZES[canvasSize];
     try {

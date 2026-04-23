@@ -14,9 +14,12 @@ export interface ImageProcessOptions {
   sourceY?: number;
   sourceWidth?: number;
   sourceHeight?: number;
-  detailLevel?: 1 | 2 | 4 | 8 | 16;
+  detailLevel?: DetailLevel;
   canvasSize?: string; // Canvas size for mask lookup
 }
+
+export const DETAIL_LEVELS = [1, 3, 7, 13, 19, 27] as const;
+export type DetailLevel = typeof DETAIL_LEVELS[number];
 
 // Load an image file and return as ImageData
 export async function loadImage(file: File): Promise<{ imageData: ImageData; originalSize: { width: number; height: number } }> {
