@@ -26,27 +26,27 @@ export const CANVAS_SIZES = {
 
   // Clothing - Tops
   'Basic tee': { width: 256, height: 256 },
-  'Tank top': { width: 300, height: 300 },
-  'Short-sleeve tee': { width: 300, height: 300 },
-  'Long-sleeve tee': { width: 300, height: 300 },
+  'Tank top': { width: 256, height: 256 },
+  'Short-sleeve tee': { width: 256, height: 256 },
+  'Long-sleeve tee': { width: 256, height: 256 },
 
   // Clothing - Dresses
-  'Sleeveless dress': { width: 300, height: 300 },
-  'Short-sleeve dress': { width: 300, height: 300 },
-  'Long-sleeve dress': { width: 300, height: 300 },
-  'Robe': { width: 300, height: 300 },
-  'Dress': { width: 300, height: 300 },
+  'Sleeveless dress': { width: 256, height: 256 },
+  'Short-sleeve dress': { width: 256, height: 256 },
+  'Long-sleeve dress': { width: 256, height: 256 },
+  'Robe': { width: 256, height: 256 },
+  'Dress': { width: 256, height: 256 },
 
   // Clothing - Bottoms
-  'Skirt': { width: 300, height: 300 },
-  'Long Skirt': { width: 300, height: 300 },
-  'Shorts': { width: 300, height: 300 },
-  'Pants': { width: 300, height: 300 },
+  'Skirt': { width: 256, height: 256 },
+  'Long Skirt': { width: 256, height: 256 },
+  'Shorts': { width: 256, height: 256 },
+  'Pants': { width: 256, height: 256 },
 
   // Clothing - Headwear
-  'Cap': { width: 300, height: 300 },
-  'Headwear': { width: 300, height: 300 },
-  'Top hat': { width: 300, height: 300 },
+  'Cap': { width: 256, height: 256 },
+  'Headwear': { width: 256, height: 256 },
+  'Top hat': { width: 256, height: 256 },
 
   // Treasures
   'Anything': { width: 256, height: 256 },
@@ -57,23 +57,23 @@ export const CANVAS_SIZES = {
   'Pets': { width: 256, height: 256 },
 
   // Interior/Exterior - Interior
-  'Interior': { width: 300, height: 300 },
+  'Interior': { width: 256, height: 256 },
 
   // Interior/Exterior - Exterior & Objects
-  'Triangular roof': { width: 300, height: 300 },
-  'Pyramid roof': { width: 300, height: 300 },
-  'Conical roof': { width: 300, height: 300 },
-  'Domed roof': { width: 300, height: 300 },
+  'Triangular roof': { width: 256, height: 256 },
+  'Pyramid roof': { width: 256, height: 256 },
+  'Conical roof': { width: 256, height: 256 },
+  'Domed roof': { width: 256, height: 256 },
   'Box': { width: 256, height: 130 },
-  'Cylinder': { width: 300, height: 300 },
-  'Cone': { width: 300, height: 300 },
-  'Pyramid': { width: 300, height: 300 },
-  'Octahedron': { width: 300, height: 300 },
+  'Cylinder': { width: 256, height: 256 },
+  'Cone': { width: 256, height: 256 },
+  'Pyramid': { width: 256, height: 256 },
+  'Octahedron': { width: 256, height: 256 },
   'Upright board': { width: 256, height: 256 },
   'Flat board': { width: 256, height: 256 },
-  'Dome': { width: 300, height: 300 },
-  'Egg': { width: 300, height: 300 },
-  'Sphere': { width: 300, height: 300 },
+  'Dome': { width: 256, height: 256 },
+  'Egg': { width: 256, height: 256 },
+  'Sphere': { width: 256, height: 256 },
 
   // Landscaping
   'Landscaping': { width: 256, height: 256 },

@@ -19,7 +19,7 @@ const CARD_STYLE = {
   flexDirection: 'column' as const,
   alignItems: 'center',
   justifyContent: 'center',
-  padding: '8px',
+  padding: '2rem',
   cursor: 'pointer',
   transition: 'all 0.2s',
   aspectRatio: '1 / 1',
@@ -105,10 +105,10 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
     <div className="space-y-6">
       {/* Categories Section */}
       <div>
-        <h3 className="text-base font-bold" style={{ color: 'black', marginBottom: '12px' }}>
+        <h3 className="text-base font-bold" style={{ color: 'black', marginBottom: '12px', fontSize: '20px' }}>
           Categories
         </h3>
-        <div className="canvas-selector-grid" style={{ display: 'grid', gap: '1rem', justifyContent: 'center' }}>
+        <div className="canvas-selector-grid" style={{ display: 'grid', gap: '2rem', justifyContent: 'center' }}>
           {Object.entries(CANVAS_CATEGORIES).map(([key, category]) => (
             <button
               key={key}
@@ -142,7 +142,7 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
                   minHeight: '60px',
                 }}
               />
-              <h4 style={{ color: 'black', fontWeight: 'bold', margin: '0', fontSize: '13px', textAlign: 'center' }}>
+              <h4 style={{ color: 'black', fontWeight: 'bold', margin: '0', fontSize: '16px', textAlign: 'center' }}>
                 {category.name}
               </h4>
             </button>
@@ -153,10 +153,10 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
       {/* Sub-categories Section - shown only if current category has subcategories */}
       {hasSubcategories && (
         <div>
-          <h3 className="text-base font-bold" style={{ color: 'black', marginBottom: '12px' }}>
+          <h3 className="text-base font-bold" style={{ color: 'black', marginBottom: '12px', fontSize: '20px' }}>
             Types
           </h3>
-          <div className="canvas-selector-grid" style={{ display: 'grid', gap: '1rem', justifyContent: 'center' }}>
+          <div className="canvas-selector-grid" style={{ display: 'grid', gap: '2rem', justifyContent: 'center' }}>
             {Object.entries((currentCategoryData as any).subcategories).map(([key, subcategory]) => (
               <button
                 key={key}
@@ -191,7 +191,7 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
                     minHeight: '60px',
                   }}
                 />
-                <h4 style={{ color: 'black', fontWeight: 'bold', margin: '0', fontSize: '13px', textAlign: 'center' }}>
+                <h4 style={{ color: 'black', fontWeight: 'bold', margin: '0', fontSize: '16px', textAlign: 'center' }}>
                   {(subcategory as any).name}
                 </h4>
               </button>
@@ -202,10 +202,10 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
 
       {/* Base Shapes Section */}
       <div>
-        <h3 className="text-base font-bold" style={{ color: 'black', marginBottom: '12px' }}>
+        <h3 className="text-base font-bold" style={{ color: 'black', marginBottom: '12px', fontSize: '20px' }}>
           Base shapes
         </h3>
-        <div className="canvas-selector-grid" style={{ display: 'grid', gap: '1rem', justifyContent: 'center' }}>
+        <div className="canvas-selector-grid" style={{ display: 'grid', gap: '2rem', justifyContent: 'center' }}>
           {itemsToDisplay.map((size) => (
             <button
               key={size}
@@ -249,7 +249,7 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
                   style={{
                     color: '#717182',
                     margin: '0',
-                    fontSize: '11px',
+                    fontSize: '14px',
                   }}
                 >
                   {CANVAS_SIZES[size].width}×{CANVAS_SIZES[size].height}px

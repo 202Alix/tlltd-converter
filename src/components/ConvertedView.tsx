@@ -44,6 +44,8 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
   const [toolMode, setToolMode] = useState<ToolMode>('pan');
   const [filterColor, setFilterColor] = useState<string | null>(null);
   const [touchDistance, setTouchDistance] = useState(0);
+  const [viewportCenterX, setViewportCenterX] = useState<number | null>(null);
+  const [viewportCenterY, setViewportCenterY] = useState<number | null>(null);
 
   const paletteColors = PALETTES.palette1.colors;
   const targetSize = CANVAS_SIZES[canvasSize];
@@ -79,6 +81,16 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
     });
   }, []);
 
+  // Handle zoom centering - keep the same point in view when zooming
+  useEffect(() => {
+    if (viewportCenterX !== null && viewportCenterY !== null) {
+      const newPanX = (canvasWidth / 2) - (viewportCenterX * zoom);
+      const newPanY = (canvasHeight / 2) - (viewportCenterY * zoom);
+      setPanX(newPanX);
+      setPanY(newPanY);
+    }
+  }, [zoom, viewportCenterX, viewportCenterY, canvasWidth, canvasHeight]);
+
   // Draw converted image with grid - canvas size never changes
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -91,9 +103,16 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
     canvas.width = canvasWidth;
     canvas.height = canvasHeight;
 
-    // Clear canvas
-    ctx.fillStyle = '#e5e7eb';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Draw checkered background pattern
+    const checkSize = 10;
+    const lightColor = '#e8e8e8';
+    const darkColor = '#ffffff';
+    for (let y = 0; y < canvas.height; y += checkSize) {
+      for (let x = 0; x < canvas.width; x += checkSize) {
+        ctx.fillStyle = ((x / checkSize + y / checkSize) % 2 === 0) ? lightColor : darkColor;
+        ctx.fillRect(x, y, checkSize, checkSize);
+      }
+    }
 
     // Draw the converted image scaled by zoom
     const scaledWidth = convertedImageData.width * zoom;
@@ -141,7 +160,7 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
 
     // Draw grid if enabled
     if (showGrid) {
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+      ctx.strokeStyle = 'rgba(255, 128, 0, 0.3)';
       ctx.lineWidth = 1;
 
       // Vertical lines
@@ -401,6 +420,13 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
 
   const handleZoomChange = (newPercent: number) => {
     const clampedPercent = Math.max(10, Math.min(1000, newPercent));
+
+    // Store the current center point in image coordinates before zooming
+    const imageCenterX = (canvasWidth / 2 - panX) / zoom;
+    const imageCenterY = (canvasHeight / 2 - panY) / zoom;
+
+    setViewportCenterX(imageCenterX);
+    setViewportCenterY(imageCenterY);
     setZoomPercent(clampedPercent);
   };
 
@@ -416,7 +442,7 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
   };
 
   return (
-    <div className="space-y-4" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+    <div className="space-y-8" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
       <canvas
         ref={canvasRef}
         onMouseDown={handleMouseDown}
@@ -434,7 +460,7 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
       />
 
       {/* Bottom section with tools on left and grid/download on right */}
-      <div className="flex gap-4 w-full flex-wrap" style={{ justifyContent: 'space-between' }}>
+      <div className="flex gap-8 w-full flex-wrap" style={{ justifyContent: 'space-between' }}>
         {/* Tools on the left */}
         <div className="flex gap-2 flex-wrap">
           <button
@@ -522,7 +548,7 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
       </div>
 
       {/* Zoom controls centered */}
-      <div className="flex gap-2 w-full items-center" style={{ justifyContent: 'center' }}>
+      <div className="flex gap-8 w-full items-center" style={{ justifyContent: 'center' }}>
         <button
           onClick={() => handleZoomChange(zoomPercent - 10)}
           title="Zoom out"
@@ -574,7 +600,13 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
           <ZoomIn strokeWidth={3} className="w-5 h-5" />
         </button>
         <button
-          onClick={() => setZoomPercent(100)}
+          onClick={() => {
+            setZoomPercent(100);
+            setViewportCenterX(null);
+            setViewportCenterY(null);
+            setPanX(0);
+            setPanY(0);
+          }}
           title="Reset zoom"
           className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
           style={{
@@ -588,7 +620,7 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
         </button>
       </div>
 
-      <div className="text-center text-sm text-muted-foreground font-medium" style={{ marginTop: '-12px' }}>
+      <div className="text-center text-sm text-muted-foreground font-medium" style={{ marginTop: '1rem' }}>
         Zoom: {zoomPercent}%
       </div>
 

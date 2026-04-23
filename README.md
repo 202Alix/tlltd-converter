@@ -9,17 +9,18 @@ A web application for converting images to the Tomodachi Life: Living the Dream 
 - Image upload with zoom, pan, and position controls
 - **Canvas organization**: 6 categories with intelligent grouping
   - Food (256×256)
-  - Clothing (Tops, Dresses, Bottoms, Headwear) - 300×300, with masks for 3D shapes
+  - Clothing (Tops, Dresses, Bottoms, Headwear) - 256×256, with masks for 3D shapes
   - Treasures (Anything, Books, Music, Videos, Video games, Pets) - 256×256 to 256×144
-  - Interior/Exterior (Interior and Exterior shapes) - 300×300, with masks for 3D shapes
-  - Objects (3D shapes with masks) - 300×300
+  - Interior/Exterior (Interior and Exterior shapes) - 256×256, with masks for 3D shapes
+  - Objects (3D shapes with masks) - 256×256
   - Landscaping (256×256)
 - **Mask support**: Automatically applies black & white masks to properly render 3D objects and complex shapes
 - Color quantization methods: Nearest Color and Floyd-Steinberg dithering
 - Palette modes: Default (84 colors) and Color Range (full RGB)
 - Detail/pixelation slider (×1 to ×16)
 - Max colors control for simplified results
-- Interactive preview with grid overlay and color picker
+- Interactive preview with grid overlay, color picker, and centered zoom/pan
+- Checkered background pattern for accurate color preview
 - Responsive design for desktop and mobile
 - PNG download and localStorage persistence
 - Auto-select first item in categories/sub-categories for streamlined workflow
@@ -36,10 +37,10 @@ A web application for converting images to the Tomodachi Life: Living the Dream 
 ## Supported Canvas Sizes
 
 - **Food**: 256×256
-- **Clothing** (16 items): 256×256 to 300×300, includes Basic Tee, Tank Top, Dresses, Skirts, Pants, Headwear, etc.
+- **Clothing** (16 items): 256×256, includes Basic Tee, Tank Top, Dresses, Skirts, Pants, Headwear, etc.
 - **Treasures**: Anything (256×256), Books (180×256), Music (256×256), Videos (256×131), Video games (256×144), Pets (256×256)
-- **Interior/Exterior** (15 items): Interior, and 14 3D shapes (Cone, Sphere, Pyramid, Box, Cylinder, etc.) at 300×300
-- **Objects** (14 items): 3D shapes at 300×300
+- **Interior/Exterior** (15 items): Interior, and 14 3D shapes (Cone, Sphere, Pyramid, Box, Cylinder, etc.) at 256×256
+- **Objects** (14 items): 3D shapes at 256×256
 - **Landscaping**: 256×256
 
 ## Technologies

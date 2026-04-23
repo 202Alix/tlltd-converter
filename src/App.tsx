@@ -346,9 +346,9 @@ export default function App() {
       <div className="min-h-screen text-foreground relative" style={{ paddingLeft: '32px', paddingRight: '32px', backgroundColor: 'transparent' }}>
         <div className="max-w-6xl mx-auto relative z-10" style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
         {/* Header */}
-        <div className="rounded-3xl" style={{ backgroundColor: 'white', boxShadow: '0 6px 0 #FFC336', borderRadius: '24px', padding: '16px', marginTop: '16px' }}>
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-4" style={{ minWidth: 0 }}>
+        <div className="rounded-3xl" style={{ backgroundColor: 'white', boxShadow: '0 6px 0 #FFC336', borderRadius: '24px', padding: '2rem', marginTop: '16px' }}>
+          <div className="flex items-center justify-between flex-wrap gap-8">
+            <div className="flex items-center gap-8" style={{ minWidth: 0 }}>
               <img src={LogoUrl} alt="Logo" style={{ height: '64px', width: 'auto', borderRadius: '8px', flexShrink: 0 }} />
               <h1
                 className="text-3xl sm:text-4xl font-black"
@@ -382,7 +382,7 @@ export default function App() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
             {/* Canvas Selection */}
-            <div className="rounded-3xl" style={{ backgroundColor: 'white', boxShadow: '0 6px 0 #FFC336', borderRadius: '24px', padding: '16px' }}>
+            <div className="rounded-3xl" style={{ backgroundColor: 'white', boxShadow: '0 6px 0 #FFC336', borderRadius: '24px', padding: '2rem' }}>
               <CanvasSelector
                 selectedCanvasSize={selectedCanvasSize}
                 onCanvasSizeChange={handleCanvasSizeChange}
@@ -390,7 +390,7 @@ export default function App() {
             </div>
 
             {/* Controls */}
-            <div className="rounded-3xl" style={{ backgroundColor: 'white', boxShadow: '0 6px 0 #FFC336', borderRadius: '24px', padding: '16px' }}>
+            <div className="rounded-3xl" style={{ backgroundColor: 'white', boxShadow: '0 6px 0 #FFC336', borderRadius: '24px', padding: '2rem' }}>
               <ControlPanel
                 selectedCanvasSize={selectedCanvasSize}
                 onCanvasSizeChange={handleCanvasSizeChange}

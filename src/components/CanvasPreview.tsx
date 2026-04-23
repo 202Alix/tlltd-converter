@@ -33,18 +33,31 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
   const baseScaleY = viewportHeight / sourceImageData.height;
   const baseScale = Math.max(baseScaleX, baseScaleY);
 
+  // Store the center point of what's visible in the image (in image coordinates)
+  const [viewportCenterX, setViewportCenterX] = useState<number | null>(null);
+  const [viewportCenterY, setViewportCenterY] = useState<number | null>(null);
+
   // Initialize pan to center the image
   useEffect(() => {
     const zoom = (zoomPercent / 100) * baseScale;
-    const scaledWidth = sourceImageData.width * zoom;
-    const scaledHeight = sourceImageData.height * zoom;
 
-    // Center the image in the viewport
-    const centerX = (viewportWidth - scaledWidth) / 2;
-    const centerY = (viewportHeight - scaledHeight) / 2;
+    let newPanX: number;
+    let newPanY: number;
 
-    setPanX(centerX);
-    setPanY(centerY);
+    // If we have a stored center point, keep it in view; otherwise center the image
+    if (viewportCenterX !== null && viewportCenterY !== null) {
+      newPanX = (viewportWidth / 2) - (viewportCenterX * zoom);
+      newPanY = (viewportHeight / 2) - (viewportCenterY * zoom);
+    } else {
+      // Initial centering
+      const scaledWidth = sourceImageData.width * zoom;
+      const scaledHeight = sourceImageData.height * zoom;
+      newPanX = (viewportWidth - scaledWidth) / 2;
+      newPanY = (viewportHeight - scaledHeight) / 2;
+    }
+
+    setPanX(newPanX);
+    setPanY(newPanY);
 
     // Initialize slider fill
     const sliders = document.querySelectorAll('input[type="range"]');
@@ -54,7 +67,7 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
         updateSliderFill(val, 10, 1000, slider as HTMLInputElement);
       }
     });
-  }, [sourceImageData, zoomPercent, baseScale]);
+  }, [sourceImageData, zoomPercent, baseScale, viewportWidth, viewportHeight, viewportCenterX, viewportCenterY]);
 
   // Store the capture values in state
   const [captureValues, setCaptureValues] = useState({ x: 0, y: 0, width: 0, height: 0 });
@@ -70,9 +83,16 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
     canvas.width = viewportWidth;
     canvas.height = viewportHeight;
 
-    // Clear canvas to gray background
-    ctx.fillStyle = '#ddd';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Draw checkered background pattern
+    const checkSize = 10;
+    const lightColor = '#e8e8e8';
+    const darkColor = '#ffffff';
+    for (let y = 0; y < canvas.height; y += checkSize) {
+      for (let x = 0; x < canvas.width; x += checkSize) {
+        ctx.fillStyle = ((x / checkSize + y / checkSize) % 2 === 0) ? lightColor : darkColor;
+        ctx.fillRect(x, y, checkSize, checkSize);
+      }
+    }
 
     // Draw the source image at current zoom and pan
     const zoom = (zoomPercent / 100) * baseScale;
@@ -182,8 +202,14 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
   };
 
   const handleZoomChange = (newPercent: number) => {
-    const clampedPercent = Math.max(10, Math.min(1000, Math.round(newPercent)));
-    setZoomPercent(clampedPercent);
+    // Store the current center point in image coordinates before zooming
+    const currentZoom = (zoomPercent / 100) * baseScale;
+    const imageCenterX = (viewportWidth / 2 - panX) / currentZoom;
+    const imageCenterY = (viewportHeight / 2 - panY) / currentZoom;
+
+    setViewportCenterX(imageCenterX);
+    setViewportCenterY(imageCenterY);
+    setZoomPercent(Math.max(10, Math.min(1000, Math.round(newPercent))));
   };
 
   const updateSliderFill = (value: number, min: number, max: number, sliderElement?: HTMLInputElement) => {
@@ -207,7 +233,7 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
         className="w-full cursor-move bg-input"
         style={{ maxWidth: '512px', height: 'auto', touchAction: 'none' }}
       />
-      <div className="flex gap-2 items-center" style={{ justifyContent: 'center', marginTop: '16px', width: '100%' }}>
+      <div className="flex gap-8 items-center" style={{ justifyContent: 'center', marginTop: '2rem', width: '100%' }}>
         <button
           onClick={() => handleZoomChange(zoomPercent - 10)}
           title="Zoom out"
@@ -261,6 +287,8 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
         <button
           onClick={() => {
             setZoomPercent(100);
+            setViewportCenterX(null);
+            setViewportCenterY(null);
             setPanX(0);
             setPanY(0);
           }}
@@ -276,7 +304,7 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
           <RotateCcw strokeWidth={3} className="w-5 h-5" />
         </button>
       </div>
-      <div className="text-center text-sm text-muted-foreground font-medium" style={{ marginTop: '8px' }}>
+      <div className="text-center text-sm text-muted-foreground font-medium" style={{ marginTop: '1rem' }}>
         Zoom: {zoomPercent}%
       </div>
     </div>

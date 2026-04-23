@@ -145,10 +145,10 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   return (
     <div className="space-y-6">
       {/* Quantization Method and Palette Mode */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem' }}>
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <h3 className="text-base font-bold" style={{ color: 'black' }}>Quantization Method</h3>
+            <h3 className="text-base font-bold" style={{ color: 'black', fontSize: '20px' }}>Quantization Method</h3>
             <Tooltip text="Choose color reduction method. Nearest color being the default and dithering for smoother images." />
           </div>
           <select
@@ -164,7 +164,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
 
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <h3 className="text-base font-bold" style={{ color: 'black' }}>Palette Mode</h3>
+            <h3 className="text-base font-bold" style={{ color: 'black', fontSize: '20px' }}>Palette Mode</h3>
             <Tooltip text="Uses the in-game palette by default. Alternatively choose color range to use all rgb values." />
           </div>
           <select
@@ -180,10 +180,10 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
       </div>
 
       {/* Detail Level and Max Colors */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem' }}>
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <h3 className="text-base font-bold" style={{ color: 'black' }}>
+            <h3 className="text-base font-bold" style={{ color: 'black', fontSize: '20px' }}>
               Detail: <span style={{ color: 'black' }}>x{[1, 2, 4, 8, 16][tempDetailLevel]}</span>
             </h3>
             <Tooltip text="Reduce detail for easier manual placement. x1 = full detail, x2-x16 = blockier." />
@@ -208,7 +208,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           {paletteMode === 'colorRange' ? (
             <>
               <div className="flex items-center gap-2 mb-2">
-                <h3 className="text-base font-bold" style={{ color: 'black' }}>
+                <h3 className="text-base font-bold" style={{ color: 'black', fontSize: '20px' }}>
                   Max Colors: <span style={{ color: 'black' }}>{tempMaxColors === 256 ? 'Unlimited' : tempMaxColors}</span>
                 </h3>
                 <Tooltip text="Limit colors for simpler results. Put the slider at the end for unlimited colors." />
@@ -231,7 +231,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           ) : (
             <>
               <div className="flex items-center gap-2 mb-2">
-                <h3 className="text-base font-bold" style={{ color: 'black' }}>
+                <h3 className="text-base font-bold" style={{ color: 'black', fontSize: '20px' }}>
                   Max Colors: <span style={{ color: 'black' }}>{tempMaxColors === 84 ? 'Unlimited' : tempMaxColors}</span>
                 </h3>
                 <Tooltip text="Limit colors for simpler results. Put the slider at the end for unlimited colors." />
