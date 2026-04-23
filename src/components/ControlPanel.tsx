@@ -144,12 +144,12 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Quantization Method and Palette Mode */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem' }}>
+      {/* Color Reduction and Color Palette */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(250px, 100%), 1fr))', gap: 'clamp(1rem, 3vw, 2rem)' }}>
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <h3 className="text-base font-bold" style={{ color: 'black', fontSize: '20px' }}>Quantization Method</h3>
-            <Tooltip text="Choose color reduction method. Nearest color being the default and dithering for smoother images." />
+            <h3 className="text-base font-bold" style={{ color: 'black', fontSize: '20px' }}>Color Reduction</h3>
+            <Tooltip text="Choose how colors are simplified. Solid uses single colors, Blended mixes nearby colors for smoother transitions." />
           </div>
           <select
             value={quantizationMethod}
@@ -157,15 +157,15 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             className="w-full px-4 py-2 rounded-2xl bg-input text-foreground hover:opacity-90 transition-colors font-medium"
             style={{ boxShadow: '0 6px 0 #eeedef' }}
           >
-            <option value="nearest-color">Nearest Color</option>
-            <option value="dithering">Dithering</option>
+            <option value="nearest-color">Solid</option>
+            <option value="dithering">Blended</option>
           </select>
         </div>
 
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <h3 className="text-base font-bold" style={{ color: 'black', fontSize: '20px' }}>Palette Mode</h3>
-            <Tooltip text="Uses the in-game palette by default. Alternatively choose color range to use all rgb values." />
+            <h3 className="text-base font-bold" style={{ color: 'black', fontSize: '20px' }}>Color Palette</h3>
+            <Tooltip text="In-Game uses the Tomodachi colors. Custom uses any colors from your image." />
           </div>
           <select
             value={paletteMode}
@@ -173,20 +173,20 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             className="w-full px-4 py-2 rounded-2xl bg-input text-foreground hover:opacity-90 transition-colors font-medium"
             style={{ boxShadow: '0 6px 0 #eeedef' }}
           >
-            <option value="default">Default Palette</option>
-            <option value="colorRange">Color Range</option>
+            <option value="default">In-Game</option>
+            <option value="colorRange">Custom</option>
           </select>
         </div>
       </div>
 
       {/* Detail Level and Max Colors */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(250px, 100%), 1fr))', gap: 'clamp(1rem, 3vw, 2rem)' }}>
         <div>
           <div className="flex items-center gap-2 mb-2">
             <h3 className="text-base font-bold" style={{ color: 'black', fontSize: '20px' }}>
-              Detail: <span style={{ color: 'black' }}>x{[1, 2, 4, 8, 16][tempDetailLevel]}</span>
+              Block Size: <span style={{ color: 'black' }}>x{[1, 2, 4, 8, 16][tempDetailLevel]}</span>
             </h3>
-            <Tooltip text="Reduce detail for easier manual placement. x1 = full detail, x2-x16 = blockier." />
+            <Tooltip text="Larger blocks = simpler image. x1 = tiny detailed blocks, x16 = large simple blocks." />
           </div>
           <input
             type="range"
@@ -211,7 +211,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 <h3 className="text-base font-bold" style={{ color: 'black', fontSize: '20px' }}>
                   Max Colors: <span style={{ color: 'black' }}>{tempMaxColors === 256 ? 'Unlimited' : tempMaxColors}</span>
                 </h3>
-                <Tooltip text="Limit colors for simpler results. Put the slider at the end for unlimited colors." />
+                <Tooltip text="Fewer colors = simpler results. Slide to the right for unlimited colors." />
               </div>
               <input
                 type="range"
@@ -234,7 +234,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 <h3 className="text-base font-bold" style={{ color: 'black', fontSize: '20px' }}>
                   Max Colors: <span style={{ color: 'black' }}>{tempMaxColors === 84 ? 'Unlimited' : tempMaxColors}</span>
                 </h3>
-                <Tooltip text="Limit colors for simpler results. Put the slider at the end for unlimited colors." />
+                <Tooltip text="Fewer colors = simpler results. Slide to the right for unlimited colors." />
               </div>
               <input
                 type="range"

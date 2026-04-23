@@ -118,9 +118,13 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
     setCaptureValues({ x: captureX, y: captureY, width: captureWidth, height: captureHeight });
   }, [sourceImageData, zoomPercent, panX, panY, viewportWidth, viewportHeight, baseScale]);
 
-  // Notify parent only when capture values actually change
+  // Notify parent only when capture values actually change - with debounce
   useEffect(() => {
-    onCropChange(captureValues.x, captureValues.y, captureValues.width, captureValues.height);
+    const timeout = setTimeout(() => {
+      onCropChange(captureValues.x, captureValues.y, captureValues.width, captureValues.height);
+    }, 300);
+
+    return () => clearTimeout(timeout);
   }, [captureValues, onCropChange]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -151,6 +155,64 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
   const handleMouseUp = () => {
     setIsDragging(false);
   };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (e.ctrlKey || e.metaKey) {
+      // Pinch zoom (trackpad pinch or wheel with ctrl/cmd)
+      const zoomDelta = e.deltaY > 0 ? -10 : 10;
+      handleZoomChange(zoomPercent + zoomDelta);
+    } else {
+      // Trackpad two-finger scroll for panning
+      const zoom = (zoomPercent / 100) * baseScale;
+      const scaledWidth = sourceImageData.width * zoom;
+      const scaledHeight = sourceImageData.height * zoom;
+
+      const maxX = Math.max(viewportWidth - scaledWidth, 0);
+      const maxY = Math.max(viewportHeight - scaledHeight, 0);
+      const minX = Math.min(0, viewportWidth - scaledWidth);
+      const minY = Math.min(0, viewportHeight - scaledHeight);
+
+      const newX = Math.max(minX, Math.min(maxX, panX - e.deltaX));
+      const newY = Math.max(minY, Math.min(maxY, panY - e.deltaY));
+
+      setPanX(newX);
+      setPanY(newY);
+    }
+  };
+
+  const handleGestureChange = (e: any) => {
+    // Safari/iOS gesture events for pinch zoom
+    e.preventDefault();
+    e.stopPropagation();
+    const scaleFactor = e.scale;
+    if (scaleFactor !== 1) {
+      const zoomDelta = scaleFactor > 1 ? 20 : -20;
+      handleZoomChange(zoomPercent + zoomDelta);
+    }
+  };
+
+  // Attach gesture listener for Safari
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const wheelHandler = (e: WheelEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      handleWheel(e as any);
+    };
+
+    canvas.addEventListener('gesturechange', handleGestureChange as any);
+    canvas.addEventListener('wheel', wheelHandler, { passive: false });
+
+    return () => {
+      canvas.removeEventListener('gesturechange', handleGestureChange as any);
+      canvas.removeEventListener('wheel', wheelHandler);
+    };
+  }, [handleGestureChange, handleWheel]);
 
   const getTouchDistance = (touches: any) => {
     if (touches.length !== 2) return 0;
@@ -230,6 +292,7 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onWheel={handleWheel}
         className="w-full cursor-move bg-input"
         style={{ maxWidth: '512px', height: 'auto', touchAction: 'none' }}
       />

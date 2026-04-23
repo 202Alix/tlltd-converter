@@ -84,11 +84,13 @@ export type CanvasSizeKey = keyof typeof CANVAS_SIZES;
 export const CANVAS_CATEGORIES = {
   Food: {
     name: 'Food',
+    icon: 'UtensilsCrossed',
     color: '#FFD700',
     items: ['Food'] as CanvasSizeKey[],
   },
   Clothing: {
     name: 'Clothing',
+    icon: 'Shirt',
     color: '#FF69B4',
     subcategories: {
       Tops: {
@@ -111,21 +113,25 @@ export const CANVAS_CATEGORIES = {
   },
   Treasures: {
     name: 'Treasures',
+    icon: 'Gem',
     color: '#9370DB',
     items: ['Anything', 'Books', 'Music', 'Videos', 'Video games', 'Pets'] as CanvasSizeKey[],
   },
   'Interior/Exterior': {
     name: 'Interior/Exterior',
+    icon: 'Home',
     color: '#87CEEB',
     items: ['Interior', 'Triangular roof', 'Pyramid roof', 'Conical roof', 'Domed roof', 'Box', 'Cylinder', 'Cone', 'Pyramid', 'Octahedron', 'Upright board', 'Flat board', 'Dome', 'Egg', 'Sphere'] as CanvasSizeKey[],
   },
   Objects: {
     name: 'Objects',
+    icon: 'Square',
     color: '#90EE90',
     items: ['Box', 'Cylinder', 'Cone', 'Pyramid', 'Octahedron', 'Upright board', 'Flat board', 'Dome', 'Egg', 'Sphere', 'Triangular roof', 'Pyramid roof', 'Conical roof', 'Domed roof'] as CanvasSizeKey[],
   },
   Landscaping: {
     name: 'Landscaping',
+    icon: 'Mountain',
     color: '#8B4513',
     items: ['Landscaping'] as CanvasSizeKey[],
   },

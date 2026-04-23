@@ -266,7 +266,7 @@ export default function App() {
     <>
       {/* Render legal pages */}
       {currentPage === 'privacy' && (
-        <div className="min-h-screen text-foreground" style={{ paddingLeft: '32px', paddingRight: '32px', backgroundColor: 'transparent' }}>
+        <div className="min-h-screen text-foreground" style={{ paddingLeft: 'clamp(16px, 5vw, 32px)', paddingRight: 'clamp(16px, 5vw, 32px)', backgroundColor: 'transparent' }}>
           <div style={{ paddingTop: '16px' }}>
             <button
               onClick={() => setCurrentPage('app')}
@@ -285,7 +285,7 @@ export default function App() {
       )}
 
       {currentPage === 'terms' && (
-        <div className="min-h-screen text-foreground" style={{ paddingLeft: '32px', paddingRight: '32px', backgroundColor: 'transparent' }}>
+        <div className="min-h-screen text-foreground" style={{ paddingLeft: 'clamp(16px, 5vw, 32px)', paddingRight: 'clamp(16px, 5vw, 32px)', backgroundColor: 'transparent' }}>
           <div style={{ paddingTop: '16px' }}>
             <button
               onClick={() => setCurrentPage('app')}
@@ -304,7 +304,7 @@ export default function App() {
       )}
 
       {currentPage === 'license' && (
-        <div className="min-h-screen text-foreground" style={{ paddingLeft: '32px', paddingRight: '32px', backgroundColor: 'transparent' }}>
+        <div className="min-h-screen text-foreground" style={{ paddingLeft: 'clamp(16px, 5vw, 32px)', paddingRight: 'clamp(16px, 5vw, 32px)', backgroundColor: 'transparent' }}>
           <div style={{ paddingTop: '16px' }}>
             <button
               onClick={() => setCurrentPage('app')}
@@ -323,7 +323,7 @@ export default function App() {
       )}
 
       {currentPage === 'contact' && (
-        <div className="min-h-screen text-foreground" style={{ paddingLeft: '32px', paddingRight: '32px', backgroundColor: 'transparent' }}>
+        <div className="min-h-screen text-foreground" style={{ paddingLeft: 'clamp(16px, 5vw, 32px)', paddingRight: 'clamp(16px, 5vw, 32px)', backgroundColor: 'transparent' }}>
           <div style={{ paddingTop: '16px' }}>
             <button
               onClick={() => setCurrentPage('app')}
@@ -343,16 +343,15 @@ export default function App() {
 
       {/* Main app */}
       {currentPage === 'app' && (
-      <div className="min-h-screen text-foreground relative" style={{ paddingLeft: '32px', paddingRight: '32px', backgroundColor: 'transparent' }}>
-        <div className="max-w-6xl mx-auto relative z-10" style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+      <div className="min-h-screen text-foreground relative flex flex-col" style={{ backgroundColor: 'transparent' }}>
         {/* Header */}
-        <div className="rounded-3xl" style={{ backgroundColor: 'white', boxShadow: '0 6px 0 #FFC336', borderRadius: '24px', padding: '2rem', marginTop: '16px' }}>
-          <div className="flex items-center justify-between flex-wrap gap-8">
-            <div className="flex items-center gap-8" style={{ minWidth: 0 }}>
-              <img src={LogoUrl} alt="Logo" style={{ height: '64px', width: 'auto', borderRadius: '8px', flexShrink: 0 }} />
+        <header className="w-full bg-white" style={{ boxShadow: '0 6px 0 #FFC336' }}>
+          <div style={{ paddingLeft: 'clamp(16px, 5vw, 32px)', paddingRight: 'clamp(16px, 5vw, 32px)', paddingTop: '1rem', paddingBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '2rem' }}>
+            <div className="flex items-center gap-6" style={{ minWidth: 0 }}>
+              <img src={LogoUrl} alt="Logo" style={{ height: '56px', width: 'auto', borderRadius: '8px', flexShrink: 0 }} />
               <h1
-                className="text-3xl sm:text-4xl font-black"
-                style={{ color: 'black', lineHeight: '1.1' }}
+                className="text-2xl sm:text-3xl font-black"
+                style={{ color: 'black', lineHeight: '1.2' }}
               >
                 Tomodachi Dream<br />Image Converter
               </h1>
@@ -365,48 +364,66 @@ export default function App() {
                   setOriginalImageSize(null);
                   setShowGrid(false);
                 }}
-                className="px-6 py-3 text-white rounded-full transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
-                style={{ backgroundColor: '#FF8000', flexShrink: 0 }}
+                className="px-6 py-3 rounded-full transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold whitespace-nowrap text-sm sm:text-base"
+                style={{ border: '2px solid #FF8000', backgroundColor: 'transparent', color: '#FF8000', flexShrink: 0 }}
               >
                 <Upload strokeWidth={3} className="w-5 h-5" />
-                Upload Different Image
+                <span className="hidden sm:inline">Upload Different Image</span>
+                <span className="sm:hidden">Upload</span>
               </button>
             )}
           </div>
-        </div>
+        </header>
+
+        <div className="flex-1 flex flex-col" style={{ paddingLeft: 'clamp(16px, 5vw, 32px)', paddingRight: 'clamp(16px, 5vw, 32px)', paddingTop: 'clamp(2.5rem, 8vw, 4rem)' }}>
+        <div className="max-w-6xl mx-auto relative z-10 w-full" style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(1.5rem, 5vw, 2rem)' }}>
 
         {!sourceImageData ? (
           <div className="rounded-3xl" style={{ backgroundColor: 'white', boxShadow: '0 6px 0 #FFC336', borderRadius: '24px', padding: '16px' }}>
             <ImageUpload onImageLoaded={handleImageLoaded} />
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-            {/* Canvas Selection */}
-            <div className="rounded-3xl" style={{ backgroundColor: 'white', boxShadow: '0 6px 0 #FFC336', borderRadius: '24px', padding: '2rem' }}>
-              <CanvasSelector
-                selectedCanvasSize={selectedCanvasSize}
-                onCanvasSizeChange={handleCanvasSizeChange}
-              />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(1.5rem, 5vw, 2rem)' }}>
+            {/* Shape Selection Section */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{ backgroundColor: 'white', boxShadow: '0 6px 0 #FFC336', padding: '1.5rem 2rem 0.5rem 2rem', textAlign: 'center', borderRadius: '24px 24px 0 0' }}>
+                <h2 style={{ color: 'black', margin: '0', fontSize: '28px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                  Shape Selection
+                </h2>
+              </div>
+              <div style={{ backgroundColor: 'white', boxShadow: '0 6px 0 #FFC336', padding: '2rem', width: '100%', borderRadius: '24px' }}>
+                <CanvasSelector
+                  selectedCanvasSize={selectedCanvasSize}
+                  onCanvasSizeChange={handleCanvasSizeChange}
+                />
+              </div>
             </div>
 
-            {/* Controls */}
-            <div className="rounded-3xl" style={{ backgroundColor: 'white', boxShadow: '0 6px 0 #FFC336', borderRadius: '24px', padding: '2rem' }}>
-              <ControlPanel
-                selectedCanvasSize={selectedCanvasSize}
-                onCanvasSizeChange={handleCanvasSizeChange}
-                paletteMode={paletteMode}
-                onPaletteModeChange={setPaletteMode}
-                maxColors={maxColors}
-                onMaxColorsChange={setMaxColors}
-                quantizationMethod={quantizationMethod}
-                onQuantizationMethodChange={handleQuantizationMethodChange}
-                detailLevel={detailLevel}
-                onDetailLevelChange={setDetailLevel}
-                onPageChange={setCurrentPage}
-              />
+            {/* Conversion Settings Section */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{ backgroundColor: 'white', boxShadow: '0 6px 0 #FFC336', padding: '1.5rem 2rem 0.5rem 2rem', textAlign: 'center', borderRadius: '24px 24px 0 0' }}>
+                <h2 style={{ color: 'black', margin: '0', fontSize: '28px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                  Conversion Settings
+                </h2>
+              </div>
+              <div style={{ backgroundColor: 'white', boxShadow: '0 6px 0 #FFC336', padding: '2rem', width: '100%', borderRadius: '24px' }}>
+                <ControlPanel
+                  selectedCanvasSize={selectedCanvasSize}
+                  onCanvasSizeChange={handleCanvasSizeChange}
+                  paletteMode={paletteMode}
+                  onPaletteModeChange={setPaletteMode}
+                  maxColors={maxColors}
+                  onMaxColorsChange={setMaxColors}
+                  quantizationMethod={quantizationMethod}
+                  onQuantizationMethodChange={handleQuantizationMethodChange}
+                  detailLevel={detailLevel}
+                  onDetailLevelChange={setDetailLevel}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
             </div>
 
-            <div style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', display: 'grid', gap: '32px', gridAutoRows: 'max-content' }}>
+            <div style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', display: 'grid', gap: 'clamp(1.5rem, 5vw, 2rem)', gridAutoRows: 'max-content' }}>
               {/* Position Image Panel */}
               <div className="rounded-3xl" style={{ gridColumn: 'auto', backgroundColor: 'white', boxShadow: '0 6px 0 #FFC336', borderRadius: '24px', padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <div className="flex items-center gap-2 mb-4">
@@ -416,13 +433,16 @@ export default function App() {
                   >
                     Your image
                   </h2>
-                  <Tooltip text="What you see below is what part of the image will be converted." />
+                  <Tooltip text="Move and zoom your image to choose exactly what gets converted." />
                 </div>
                 <CanvasPreview
                   sourceImageData={sourceImageData}
                   canvasSize={selectedCanvasSize}
                   onCropChange={handleCropChange}
                 />
+                <p className="text-center text-sm text-muted-foreground font-medium" style={{ marginTop: '1rem' }}>
+                  Tip: Zoom and move the image to pick which part will be converted.
+                </p>
               </div>
 
               {/* Preview Result Panel */}
@@ -432,9 +452,9 @@ export default function App() {
                     className="text-2xl font-black"
                     style={{ color: 'black', textAlign: 'center' }}
                   >
-                    Preview result
+                    Converted image
                   </h2>
-                  <Tooltip text="This is your image converted.Inspect, zoom, pan, and download your result." />
+                  <Tooltip text="This shows how your converted image will look. You can zoom, move around, and download it." />
                 </div>
                 {convertedImageData ? (
                   <ConvertedView
@@ -466,7 +486,8 @@ export default function App() {
             </div>
           </div>
         )}
-      </div>
+        </div>
+        </div>
       </div>
       )}
 

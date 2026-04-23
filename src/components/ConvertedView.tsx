@@ -1,10 +1,16 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { ZoomIn, ZoomOut, RotateCcw, Grid3x3, Download, Hand, Pipette, Wand2 } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Grid3x3, Download, Hand, Pipette, Wand2, Maximize2, X } from 'lucide-react';
 import { findClosestColor } from '../lib/colorUtils';
-import { downloadImage } from '../lib/imageProcessor';
 import { PALETTES } from '../lib/palettes';
 import { CANVAS_SIZES, CanvasSizeKey } from '../lib/palettes';
+
+// Color constants
+const COLOR_PRIMARY = '#FF8000';
+const COLOR_SECONDARY = '#FFDA85';
+const COLOR_TEXT = '#2b2b2b';
+const COLOR_OVERLAY = 'rgba(0, 0, 0, 0.7)';
+const COLOR_SHADOW = '#FFC336';
 
 interface ConvertedViewProps {
   convertedImageData: ImageData;
@@ -46,6 +52,7 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
   const [touchDistance, setTouchDistance] = useState(0);
   const [viewportCenterX, setViewportCenterX] = useState<number | null>(null);
   const [viewportCenterY, setViewportCenterY] = useState<number | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const paletteColors = PALETTES.palette1.colors;
   const targetSize = CANVAS_SIZES[canvasSize];
@@ -90,6 +97,63 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
       setPanY(newPanY);
     }
   }, [zoom, viewportCenterX, viewportCenterY, canvasWidth, canvasHeight]);
+
+  const handleGestureChange = useCallback((e: any) => {
+    // Safari/iOS gesture events for pinch zoom
+    e.preventDefault();
+    e.stopPropagation();
+    const scaleFactor = e.scale;
+    if (scaleFactor !== 1) {
+      const zoomDelta = scaleFactor > 1 ? 20 : -20;
+      handleZoomChange(zoomPercent + zoomDelta);
+    }
+  }, [zoomPercent]);
+
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (e.ctrlKey || e.metaKey) {
+      // Pinch zoom (trackpad pinch or wheel with ctrl/cmd)
+      const zoomDelta = e.deltaY > 0 ? -10 : 10;
+      handleZoomChange(zoomPercent + zoomDelta);
+    } else {
+      // Trackpad two-finger scroll for panning
+      const scaledWidth = convertedImageData.width * zoom;
+      const scaledHeight = convertedImageData.height * zoom;
+
+      const maxX = 0;
+      const maxY = 0;
+      const minX = canvasWidth - scaledWidth;
+      const minY = canvasHeight - scaledHeight;
+
+      const newX = Math.max(minX, Math.min(maxX, panX - e.deltaX));
+      const newY = Math.max(minY, Math.min(maxY, panY - e.deltaY));
+
+      setPanX(newX);
+      setPanY(newY);
+    }
+  }, [zoomPercent, convertedImageData.width, convertedImageData.height, zoom, canvasWidth, canvasHeight, panX, panY]);
+
+  // Attach gesture listener for Safari
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const wheelHandler = (e: WheelEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      handleWheel(e as any);
+    };
+
+    canvas.addEventListener('gesturechange', handleGestureChange as any);
+    canvas.addEventListener('wheel', wheelHandler, { passive: false });
+
+    return () => {
+      canvas.removeEventListener('gesturechange', handleGestureChange as any);
+      canvas.removeEventListener('wheel', wheelHandler);
+    };
+  }, [handleGestureChange, handleWheel]);
 
   // Draw converted image with grid - canvas size never changes
   useEffect(() => {
@@ -185,7 +249,7 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
         }
       }
     }
-  }, [convertedImageData, zoom, panX, panY, showGrid, canvasWidth, canvasHeight, toolMode, filterColor]);
+  }, [convertedImageData, zoom, panX, panY, showGrid, canvasWidth, canvasHeight, toolMode, filterColor, isFullscreen]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (toolMode === 'pan') {
@@ -223,12 +287,6 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
     const dx = touches[0].clientX - touches[1].clientX;
     const dy = touches[0].clientY - touches[1].clientY;
     return Math.sqrt(dx * dx + dy * dy);
-  };
-
-  const getTouchCenter = (touches: any) => {
-    const x = (touches[0].clientX + touches[1].clientX) / 2;
-    const y = (touches[0].clientY + touches[1].clientY) / 2;
-    return { x, y };
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -437,30 +495,53 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
     }
   };
 
-  const handleDownload = () => {
-    downloadImage(convertedImageData, 'tomodachi-converted.png');
-  };
+  const handleDownload = useCallback(() => {
+    if (convertedImageData) {
+      const canvas = document.createElement('canvas');
+      canvas.width = convertedImageData.width;
+      canvas.height = convertedImageData.height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.putImageData(convertedImageData, 0, 0);
+        const link = document.createElement('a');
+        link.download = `tomodachi-${canvasSize}.png`;
+        link.href = canvas.toDataURL();
+        link.click();
+      }
+    }
+  }, [convertedImageData, canvasSize]);
+
+  // Force canvas redraw when entering/exiting fullscreen
+  useEffect(() => {
+    if (isFullscreen && canvasRef.current) {
+      // Trigger immediate redraw
+      setZoomPercent(prev => prev);
+    }
+  }, [isFullscreen]);
 
   return (
     <div className="space-y-8" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-      <canvas
-        ref={canvasRef}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        onClick={handleCanvasClick}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        className={`bg-input w-full ${
-          toolMode === 'pan' ? 'cursor-grab active:cursor-grabbing' : 'cursor-crosshair'
-        }`}
-        style={{ imageRendering: 'pixelated', maxWidth: '512px', height: 'auto', touchAction: 'none' }}
-      />
+      {!isFullscreen && (
+        <>
+          <canvas
+            ref={canvasRef}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            onClick={handleCanvasClick}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onWheel={handleWheel}
+            className={`bg-input w-full ${
+              toolMode === 'pan' ? 'cursor-grab active:cursor-grabbing' : 'cursor-crosshair'
+            }`}
+            style={{ imageRendering: 'pixelated', maxWidth: 'min(512px, 100%)', height: 'auto', touchAction: 'none' }}
+          />
 
       {/* Bottom section with tools on left and grid/download on right */}
-      <div className="flex gap-8 w-full flex-wrap" style={{ justifyContent: 'space-between' }}>
+      <div className="flex w-full flex-wrap" style={{ justifyContent: 'space-between', gap: 'clamp(1rem, 3vw, 2rem)' }}>
         {/* Tools on the left */}
         <div className="flex gap-2 flex-wrap">
           <button
@@ -519,21 +600,7 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
             <Grid3x3 strokeWidth={3} className="w-5 h-5" />
           </button>
           <button
-            onClick={() => {
-              if (convertedImageData) {
-                const canvas = document.createElement('canvas');
-                canvas.width = convertedImageData.width;
-                canvas.height = convertedImageData.height;
-                const ctx = canvas.getContext('2d');
-                if (ctx) {
-                  ctx.putImageData(convertedImageData, 0, 0);
-                  const link = document.createElement('a');
-                  link.download = `tomodachi-${canvasSize}.png`;
-                  link.href = canvas.toDataURL();
-                  link.click();
-                }
-              }
-            }}
+            onClick={handleDownload}
             title="Download as PNG"
             className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold disabled:opacity-50"
             style={{
@@ -544,11 +611,23 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
           >
             <Download strokeWidth={3} className="w-5 h-5" />
           </button>
+          <button
+            onClick={() => setIsFullscreen(true)}
+            title="Fullscreen"
+            className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
+            style={{
+              backgroundColor: COLOR_SECONDARY,
+              color: 'black',
+              border: 'none',
+            }}
+          >
+            <Maximize2 strokeWidth={3} className="w-5 h-5" />
+          </button>
         </div>
       </div>
 
       {/* Zoom controls centered */}
-      <div className="flex gap-8 w-full items-center" style={{ justifyContent: 'center' }}>
+      <div className="flex w-full items-center" style={{ justifyContent: 'center', gap: 'clamp(0.5rem, 2vw, 1rem)' }}>
         <button
           onClick={() => handleZoomChange(zoomPercent - 10)}
           title="Zoom out"
@@ -623,6 +702,227 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
       <div className="text-center text-sm text-muted-foreground font-medium" style={{ marginTop: '1rem' }}>
         Zoom: {zoomPercent}%
       </div>
+        </>
+      )}
+
+      {isFullscreen && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: COLOR_OVERLAY,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: 'clamp(1rem, 5vw, 2rem)',
+          }}
+          onClick={() => setIsFullscreen(false)}
+        >
+          <div
+            style={{
+              backgroundColor: 'white',
+              boxShadow: `0 6px 0 ${COLOR_SHADOW}`,
+              borderRadius: '24px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'stretch',
+              width: '100%',
+              height: 'calc(100vh - clamp(2rem, 10vw, 4rem))',
+              gap: '0',
+              position: 'relative',
+              overflow: 'hidden',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Canvas - reaches edges */}
+            <div style={{ flex: '1 1 0', minHeight: 0, padding: 'clamp(1rem, 3vw, 1.5rem)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <canvas
+                ref={canvasRef}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+                onClick={handleCanvasClick}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+                onWheel={handleWheel}
+                className={`bg-input ${
+                  toolMode === 'pan' ? 'cursor-grab active:cursor-grabbing' : 'cursor-crosshair'
+                }`}
+                style={{ imageRendering: 'pixelated', width: '100%', height: '100%', touchAction: 'none', display: 'block', objectFit: 'contain' }}
+              />
+            </div>
+
+                        {/* Bottom section: Tools on left | Zoom Controls in middle | Grid/Download/Close on right */}
+             <div className="flex w-full items-center gap-2" style={{ marginTop: 'auto', flexWrap: 'wrap', justifyContent: 'center', gap: 'clamp(0.5rem, 2vw, 1rem)', padding: 'clamp(1rem, 3vw, 1.5rem)', paddingTop: 'clamp(0.75rem, 2vw, 1rem)', backgroundColor: 'white', flexShrink: 0 }}>
+               {/* Tools on the left */}
+               <div className="flex gap-2 flex-wrap">
+                 <button
+                   onClick={() => setToolMode('pan')}
+                   className="px-3 py-2 rounded-lg transition-all font-bold flex items-center gap-2"
+                   style={{
+                     backgroundColor: toolMode === 'pan' ? COLOR_PRIMARY : COLOR_SECONDARY,
+                     color: toolMode === 'pan' ? 'white' : 'black',
+                     border: 'none',
+                   }}
+                   title="Pan mode (drag to move)"
+                 >
+                   <Hand strokeWidth={3} className="w-5 h-5" />
+                   Pan
+                 </button>
+                 <button
+                   onClick={() => setToolMode(toolMode === 'eyedropper' ? 'pan' : 'eyedropper')}
+                   className="px-3 py-2 rounded-lg transition-all font-bold flex items-center gap-2"
+                   style={{
+                     backgroundColor: toolMode === 'eyedropper' ? COLOR_PRIMARY : COLOR_SECONDARY,
+                     color: toolMode === 'eyedropper' ? 'white' : 'black',
+                     border: 'none',
+                   }}
+                   title="Eyedropper mode (click to pick color)"
+                 >
+                   <Pipette strokeWidth={3} className="w-5 h-5" />
+                   Pick Color
+                 </button>
+                 <button
+                   onClick={() => setToolMode(toolMode === 'colorFilter' ? 'pan' : 'colorFilter')}
+                   className="px-3 py-2 rounded-lg transition-all font-bold flex items-center gap-2"
+                   style={{
+                     backgroundColor: toolMode === 'colorFilter' ? COLOR_PRIMARY : COLOR_SECONDARY,
+                     color: toolMode === 'colorFilter' ? 'white' : 'black',
+                     border: 'none',
+                   }}
+                   title="Color filter mode (click to select color to highlight)"
+                 >
+                   <Wand2 strokeWidth={3} className="w-5 h-5" />
+                   Filter
+                 </button>
+               </div>
+
+               {/* Zoom controls in the middle */}
+               <div className="flex gap-2 items-center" style={{ flexShrink: 1, justifyContent: 'center', minWidth: 0, maxWidth: '400px' }}>
+                 <button
+                   onClick={() => handleZoomChange(zoomPercent - 10)}
+                   title="Zoom out"
+                   className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 font-bold"
+                   style={{
+                     color: COLOR_TEXT,
+                     flexShrink: 0
+                   }}
+                   onMouseEnter={(e) => (e.currentTarget.style.color = COLOR_PRIMARY)}
+                   onMouseLeave={(e) => (e.currentTarget.style.color = COLOR_TEXT)}
+                 >
+                   <ZoomOut strokeWidth={3} className="w-5 h-5" />
+                 </button>
+                 <input
+                   type="range"
+                   min="10"
+                   max="1000"
+                   step="1"
+                   value={zoomPercent}
+                   onChange={(e) => {
+                     const newValue = parseInt(e.target.value);
+                     handleZoomChange(newValue);
+                     updateSliderFill(newValue, 10, 1000, e.currentTarget);
+                   }}
+                   style={{
+                     accentColor: COLOR_PRIMARY,
+                     appearance: 'none',
+                     flex: 1,
+                     height: '8px',
+                     borderRadius: '4px',
+                     outline: 'none',
+                     WebkitAppearance: 'none',
+                     '--range-fill': `${((zoomPercent - 10) / (1000 - 10)) * 100}%`,
+                     minWidth: 'clamp(80px, 20vw, 200px)'
+                   } as React.CSSProperties}
+                 />
+                 <button
+                   onClick={() => handleZoomChange(zoomPercent + 10)}
+                   title="Zoom in"
+                   className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 font-bold"
+                   style={{
+                     color: COLOR_TEXT,
+                     flexShrink: 0
+                   }}
+                   onMouseEnter={(e) => (e.currentTarget.style.color = COLOR_PRIMARY)}
+                   onMouseLeave={(e) => (e.currentTarget.style.color = COLOR_TEXT)}
+                 >
+                   <ZoomIn strokeWidth={3} className="w-5 h-5" />
+                 </button>
+                 <button
+                   onClick={() => {
+                     setZoomPercent(100);
+                     setViewportCenterX(null);
+                     setViewportCenterY(null);
+                     setPanX(0);
+                     setPanY(0);
+                   }}
+                   title="Reset zoom"
+                   className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
+                   style={{
+                     color: COLOR_TEXT,
+                     flexShrink: 0
+                   }}
+                   onMouseEnter={(e) => (e.currentTarget.style.color = COLOR_PRIMARY)}
+                   onMouseLeave={(e) => (e.currentTarget.style.color = COLOR_TEXT)}
+                 >
+                   <RotateCcw strokeWidth={3} className="w-5 h-5" />
+                 </button>
+                 <span className="text-sm text-muted-foreground font-medium" style={{ flexShrink: 0, minWidth: '60px', textAlign: 'center' }}>
+                   {zoomPercent}%
+                 </span>
+               </div>
+
+               {/* Grid, Download, and Close on the right */}
+               <div className="flex gap-2 flex-wrap" style={{ flexShrink: 0 }}>
+                 <button
+                   onClick={() => onToggleGrid(!showGrid)}
+                   title="Toggle grid overlay"
+                   className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
+                   style={{
+                     backgroundColor: showGrid ? COLOR_PRIMARY : COLOR_SECONDARY,
+                     color: showGrid ? 'white' : 'black',
+                     border: 'none',
+                   }}
+                 >
+                   <Grid3x3 strokeWidth={3} className="w-5 h-5" />
+                 </button>
+                 <button
+                   onClick={handleDownload}
+                   title="Download as PNG"
+                   className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold disabled:opacity-50"
+                   style={{
+                     backgroundColor: '#FFDA85',
+                     color: 'black',
+                   }}
+                   disabled={!convertedImageData}
+                 >
+                   <Download strokeWidth={3} className="w-5 h-5" />
+                 </button>
+                 <button
+                   onClick={() => setIsFullscreen(false)}
+                   title="Close fullscreen"
+                   className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
+                   style={{
+                     backgroundColor: '#FFDA85',
+                     color: 'black',
+                     border: 'none',
+                   }}
+                 >
+                   <X strokeWidth={3} className="w-5 h-5" />
+                 </button>
+               </div>
+             </div>
+
+          </div>
+        </div>,
+        document.body
+      )}
 
       {tooltip && createPortal(
         <div

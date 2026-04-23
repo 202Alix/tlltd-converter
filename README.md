@@ -6,7 +6,8 @@ A web application for converting images to the Tomodachi Life: Living the Dream 
 
 ## Features
 
-- Image upload with zoom, pan, and position controls
+- Image upload by click or drag-and-drop
+- Source image zoom and move controls to choose the converted area
 - **Canvas organization**: 6 categories with intelligent grouping
   - Food (256×256)
   - Clothing (Tops, Dresses, Bottoms, Headwear) - 256×256, with masks for 3D shapes
@@ -14,24 +15,26 @@ A web application for converting images to the Tomodachi Life: Living the Dream 
   - Interior/Exterior (Interior and Exterior shapes) - 256×256, with masks for 3D shapes
   - Objects (3D shapes with masks) - 256×256
   - Landscaping (256×256)
+- Category cards with icon-based browsing
 - **Mask support**: Automatically applies black & white masks to properly render 3D objects and complex shapes
-- Color quantization methods: Nearest Color and Floyd-Steinberg dithering
-- Palette modes: Default (84 colors) and Color Range (full RGB)
-- Detail/pixelation slider (×1 to ×16)
+- Color reduction modes: Solid and Blended
+- Color palette modes: In-Game (84 colors) and Custom (full RGB)
+- Block size slider (×1 to ×16)
 - Max colors control for simplified results
-- Interactive preview with grid overlay, color picker, and centered zoom/pan
+- Interactive converted preview with pan, pick-color, color filter, grid overlay, and centered zoom/pan
+- Fullscreen converted preview mode
 - Checkered background pattern for accurate color preview
 - Responsive design for desktop and mobile
 - PNG download and localStorage persistence
-- Auto-select first item in categories/sub-categories for streamlined workflow
+- Auto-select first item in categories for streamlined workflow
 
 ## How to Use
 
 1. Upload an image
 2. Position and zoom the image using the preview controls
-3. Select a category, then a canvas size (sub-category first for Clothing/Interior-Exterior)
-4. Choose quantization method and palette mode
-5. Adjust detail level and max colors as desired
+3. Select a category, then choose a base shape/canvas size
+4. Choose Color Reduction and Color Palette modes
+5. Adjust Block Size and Max Colors as desired
 6. Download the converted PNG
 
 ## Supported Canvas Sizes

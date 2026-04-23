@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { CANVAS_CATEGORIES, CANVAS_SIZES, CanvasSizeKey } from '../lib/palettes';
+import React, { useState, useEffect } from 'react';
+import { CANVAS_CATEGORIES, CANVAS_SIZES, CanvasSizeKey, CANVAS_SIZES_WITH_MASKS } from '../lib/palettes';
+import * as LucideIcons from 'lucide-react';
 
 interface CanvasSelectorProps {
   selectedCanvasSize: CanvasSizeKey;
@@ -8,6 +9,74 @@ interface CanvasSelectorProps {
 
 type CategoryKey = keyof typeof CANVAS_CATEGORIES;
 type SubcategoryKey = string;
+
+// Cache for rendered mask canvases
+const maskCanvasCache = new Map<string, string>();
+
+// Render a mask with a specific color
+const renderMaskWithColor = async (maskPath: string, color: string): Promise<string> => {
+  const cacheKey = `${maskPath}-${color}`;
+  if (maskCanvasCache.has(cacheKey)) {
+    return maskCanvasCache.get(cacheKey)!;
+  }
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        resolve('');
+        return;
+      }
+
+      // Draw the mask image first
+      ctx.drawImage(img, 0, 0);
+      
+      // Get image data to work with pixels
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      
+      // Parse color to RGB
+      const rgbMatch = color.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+      if (!rgbMatch) {
+        resolve('');
+        return;
+      }
+      
+      const r = parseInt(rgbMatch[1], 16);
+      const g = parseInt(rgbMatch[2], 16);
+      const b = parseInt(rgbMatch[3], 16);
+      
+      // Replace white pixels with color, make black pixels transparent
+      for (let i = 0; i < data.length; i += 4) {
+        const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+        
+        // If brightness > 128, it's mostly white - keep it as color
+        if (brightness > 128) {
+          data[i] = r;
+          data[i + 1] = g;
+          data[i + 2] = b;
+          data[i + 3] = 255;
+        } else {
+          // Black/dark - make transparent
+          data[i + 3] = 0;
+        }
+      }
+      
+      ctx.putImageData(imageData, 0, 0);
+      const dataUrl = canvas.toDataURL();
+      maskCanvasCache.set(cacheKey, dataUrl);
+      resolve(dataUrl);
+    };
+    img.onerror = () => resolve('');
+    img.src = maskPath;
+  });
+};
 
 // Shared card styling
 const CARD_STYLE = {
@@ -18,11 +87,10 @@ const CARD_STYLE = {
   display: 'flex',
   flexDirection: 'column' as const,
   alignItems: 'center',
-  justifyContent: 'center',
+  justifyContent: 'flex-start',
   padding: '2rem',
   cursor: 'pointer',
   transition: 'all 0.2s',
-  aspectRatio: '1 / 1',
 };
 
 export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
@@ -101,6 +169,95 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
 
   const itemsToDisplay = getItemsToDisplay();
 
+  // Get group color based on category
+  const getCategoryGroupColor = (category: CategoryKey): string => {
+    if (category === 'Food' || category === 'Treasures') {
+      return '#FE7A53'; // Red
+    } else if (category === 'Clothing' || category === 'Objects') {
+      return '#0072AE'; // Blue
+    } else if (category === 'Interior/Exterior' || category === 'Landscaping') {
+      return '#66B120'; // Green
+    }
+    return '#FFD700'; // Fallback
+  };
+
+  const categoryGroupColor = getCategoryGroupColor(selectedCategory);
+
+  // Calculate aspect ratio for a canvas size, normalized to fit within a square
+  const getAspectRatio = (size: CanvasSizeKey): string => {
+    const canvas = CANVAS_SIZES[size];
+    const maxDimension = Math.max(canvas.width, canvas.height);
+    const normalizedWidth = canvas.width / maxDimension;
+    const normalizedHeight = canvas.height / maxDimension;
+    return `${normalizedWidth} / ${normalizedHeight}`;
+  };
+
+  // Determine which dimension should be constrained to fit in 60x60 box
+  const getShapeStyle = (size: CanvasSizeKey) => {
+    const canvas = CANVAS_SIZES[size];
+    const aspectRatio = canvas.width / canvas.height;
+    
+    // If wider than tall (landscape or square), constrain width
+    // If taller than wide (portrait), constrain height
+    if (aspectRatio >= 1) {
+      return { width: '60px', height: 'auto' };
+    } else {
+      return { width: 'auto', height: '60px' };
+    }
+  };
+
+  // Check if a size has a mask (non-rectangular shape)
+  const hasMask = (size: CanvasSizeKey): boolean => {
+    return CANVAS_SIZES_WITH_MASKS.has(size);
+  };
+
+  // Shape Preview Component
+  const ShapePreview: React.FC<{
+    size: CanvasSizeKey;
+    isSelected: boolean;
+    categoryColor: string;
+    hasMask: boolean;
+    aspectRatio: string;
+    shapeStyle: Record<string, string>;
+  }> = ({ size, isSelected, categoryColor, hasMask: isMasked, aspectRatio, shapeStyle }) => {
+    const [maskImage, setMaskImage] = useState<string>('');
+
+    useEffect(() => {
+      if (isMasked) {
+        renderMaskWithColor(
+          `${import.meta.env.BASE_URL}masks/${size}.jpg`,
+          categoryColor
+        ).then(setMaskImage);
+      }
+    }, [size, categoryColor, isMasked]);
+
+    if (isMasked && maskImage) {
+      return (
+        <img
+          src={maskImage}
+          alt={size}
+          style={{
+            aspectRatio,
+            ...shapeStyle,
+            opacity: isSelected ? 1 : 0.3,
+          }}
+        />
+      );
+    }
+
+    return (
+      <div
+        style={{
+          aspectRatio,
+          backgroundColor: categoryColor,
+          borderRadius: '8px',
+          opacity: isSelected ? 1 : 0.3,
+          ...shapeStyle,
+        }}
+      />
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Categories Section */}
@@ -108,7 +265,7 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
         <h3 className="text-base font-bold" style={{ color: 'black', marginBottom: '12px', fontSize: '20px' }}>
           Categories
         </h3>
-        <div className="canvas-selector-grid" style={{ display: 'grid', gap: '2rem', justifyContent: 'center' }}>
+        <div className="canvas-selector-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 'clamp(1rem, 3vw, 2rem)', maxWidth: '100%' }}>
           {Object.entries(CANVAS_CATEGORIES).map(([key, category]) => (
             <button
               key={key}
@@ -130,18 +287,14 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
               }}
               title={`Select ${category.name}`}
             >
-              {/* Category color square */}
-              <div
-                style={{
-                  flex: 1,
-                  aspectRatio: '1 / 1',
-                  backgroundColor: category.color,
-                  borderRadius: '8px',
-                  flexShrink: 0,
-                  minWidth: '60px',
-                  minHeight: '60px',
-                }}
-              />
+              {/* Category icon */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {React.createElement((LucideIcons as any)[(category as any).icon], {
+                  size: 60,
+                  strokeWidth: 2,
+                  color: getCategoryGroupColor(key as CategoryKey),
+                })}
+              </div>
               <h4 style={{ color: 'black', fontWeight: 'bold', margin: '0', fontSize: '16px', textAlign: 'center' }}>
                 {category.name}
               </h4>
@@ -150,62 +303,12 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
         </div>
       </div>
 
-      {/* Sub-categories Section - shown only if current category has subcategories */}
-      {hasSubcategories && (
-        <div>
-          <h3 className="text-base font-bold" style={{ color: 'black', marginBottom: '12px', fontSize: '20px' }}>
-            Types
-          </h3>
-          <div className="canvas-selector-grid" style={{ display: 'grid', gap: '2rem', justifyContent: 'center' }}>
-            {Object.entries((currentCategoryData as any).subcategories).map(([key, subcategory]) => (
-              <button
-                key={key}
-                onClick={() => handleSubcategorySelect(key)}
-                style={{
-                  ...CARD_STYLE,
-                  gap: '8px',
-                  backgroundColor: selectedSubcategory === key ? '#FFDA85' : 'white',
-                  boxShadow: selectedSubcategory === key ? '0 6px 0 #FFC336' : '0 6px 0 #eeedef',
-                  transform: 'scale(1)',
-                } as React.CSSProperties}
-                onMouseEnter={(e) => {
-                  if (selectedSubcategory !== key) {
-                    (e.currentTarget as HTMLElement).style.transform = 'scale(1.05)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLElement).style.transform = 'scale(1)';
-                }}
-                title={`Select ${(subcategory as any).name}`}
-              >
-                {/* Subcategory color square */}
-                <div
-                  style={{
-                    flex: 1,
-                    aspectRatio: '1 / 1',
-                    backgroundColor: currentCategoryData.color,
-                    borderRadius: '8px',
-                    opacity: selectedSubcategory === key ? 1 : 0.3,
-                    flexShrink: 0,
-                    minWidth: '60px',
-                    minHeight: '60px',
-                  }}
-                />
-                <h4 style={{ color: 'black', fontWeight: 'bold', margin: '0', fontSize: '16px', textAlign: 'center' }}>
-                  {(subcategory as any).name}
-                </h4>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Base Shapes Section */}
       <div>
         <h3 className="text-base font-bold" style={{ color: 'black', marginBottom: '12px', fontSize: '20px' }}>
           Base shapes
         </h3>
-        <div className="canvas-selector-grid" style={{ display: 'grid', gap: '2rem', justifyContent: 'center' }}>
+        <div className="canvas-selector-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 'clamp(1rem, 3vw, 2rem)', maxWidth: '100%' }}>
           {itemsToDisplay.map((size) => (
             <button
               key={size}
@@ -228,19 +331,27 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
               }}
               title={`Select ${size}`}
             >
-              {/* Square image placeholder */}
+              {/* Fixed-size square container for the shape */}
               <div
                 style={{
-                  flex: 1,
-                  aspectRatio: '1 / 1',
-                  backgroundColor: currentCategoryData.color,
-                  borderRadius: '8px',
-                  opacity: selectedCanvasSize === size ? 1 : 0.3,
+                  width: '80px',
+                  height: '80px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   flexShrink: 0,
-                  minWidth: '60px',
-                  minHeight: '60px',
                 }}
-              />
+              >
+                {/* Shape with canvas aspect ratio - maintains aspect while fitting in box */}
+                <ShapePreview 
+                  size={size}
+                  isSelected={selectedCanvasSize === size}
+                  categoryColor={categoryGroupColor}
+                  hasMask={hasMask(size)}
+                  aspectRatio={getAspectRatio(size)}
+                  shapeStyle={getShapeStyle(size)}
+                />
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', textAlign: 'center', width: '100%' }}>
                 <h4 style={{ color: 'black', fontWeight: 'bold', margin: '0', fontSize: '13px' }}>
                   {size}
