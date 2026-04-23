@@ -7,7 +7,7 @@ export const PrivacyPolicy = () => (
       <p>April 2026</p>
 
       <h2 style={{ fontSize: '20px', marginTop: '24px', marginBottom: '12px', fontWeight: 'bold' }}>Overview</h2>
-      <p>Tomodachi Dream Image Converter ("we", "us", "our") operates without collecting personal data. This privacy policy explains our data practices.</p>
+      <p>ResizeMe ("we", "us", "our") operates without collecting personal data. This privacy policy explains our data practices.</p>
 
       <h2 style={{ fontSize: '20px', marginTop: '24px', marginBottom: '12px', fontWeight: 'bold' }}>What Data We Collect</h2>
       <p><strong>We collect no personal data.</strong></p>

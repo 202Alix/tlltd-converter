@@ -1,4 +1,4 @@
-# Tomodachi Dream Image Converter
+# ResizeMe
 
 A web application for converting images to the Tomodachi Life: Living the Dream game format.
 

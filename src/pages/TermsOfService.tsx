@@ -7,7 +7,7 @@ export const TermsOfService = () => (
       <p>April 2026</p>
 
       <h2 style={{ fontSize: '20px', marginTop: '24px', marginBottom: '12px', fontWeight: 'bold' }}>1. Acceptance of Terms</h2>
-      <p>By using Tomodachi Dream Image Converter, you agree to these terms. If you disagree, do not use this service.</p>
+      <p>By using ResizeMe, you agree to these terms. If you disagree, do not use this service.</p>
 
       <h2 style={{ fontSize: '20px', marginTop: '24px', marginBottom: '12px', fontWeight: 'bold' }}>2. Service Availability</h2>
       <p>We provide this service on an "as-is" basis without warranty of any kind. We may modify or discontinue the service at any time without notice.</p>

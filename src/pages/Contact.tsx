@@ -25,7 +25,7 @@ export const Contact = () => (
       <p><a href="https://github.com/202alix/tlltd-converter" style={{ color: '#FF8000' }}>github.com/202alix/tlltd-converter</a></p>
 
       <h2 style={{ fontSize: '20px', marginTop: '24px', marginBottom: '12px', fontWeight: 'bold' }}>About</h2>
-      <p>Tomodachi Dream Image Converter is a fan-made tool created to help players of Tomodachi Life: Living the Dream convert and prepare images for the game.</p>
+      <p>ResizeMe is a fan-made tool created to help players of Tomodachi Life: Living the Dream convert and prepare images for the game.</p>
       <p>This is a passion project and is provided free of charge.</p>
     </div>
   </div>

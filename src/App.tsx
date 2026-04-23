@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Upload, ZoomIn, ZoomOut, Grid3x3, Download, RotateCcw, HelpCircle, Hand, Pipette, Wand2, ChevronLeft } from 'lucide-react';
-import LogoUrl from './assets/Logo_TDIC.png';
+import LogoUrl from './assets/Logo_ResizeMe.svg';
 import { ImageUpload } from './components/ImageUpload';
 import { ControlPanel } from './components/ControlPanel';
 import { CanvasPreview } from './components/CanvasPreview';
@@ -347,13 +347,13 @@ export default function App() {
         {/* Header */}
         <header className="w-full bg-white" style={{ boxShadow: '0 6px 0 #FFC336' }}>
           <div style={{ paddingLeft: 'clamp(16px, 5vw, 32px)', paddingRight: 'clamp(16px, 5vw, 32px)', paddingTop: '1rem', paddingBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '2rem' }}>
-            <div className="flex items-center gap-6" style={{ minWidth: 0 }}>
-              <img src={LogoUrl} alt="Logo" style={{ height: '56px', width: 'auto', borderRadius: '8px', flexShrink: 0 }} />
+            <div className="flex items-center gap-3" style={{ minWidth: 0 }}>
+              <img src={LogoUrl} alt="Logo" style={{ height: '44px', width: 'auto', borderRadius: '8px', flexShrink: 0 }} />
               <h1
                 className="text-2xl sm:text-3xl font-black"
                 style={{ color: 'black', lineHeight: '1.2' }}
               >
-                Tomodachi Dream<br />Image Converter
+                ResizeMe
               </h1>
             </div>
             {sourceImageData && (
@@ -440,9 +440,6 @@ export default function App() {
                   canvasSize={selectedCanvasSize}
                   onCropChange={handleCropChange}
                 />
-                <p className="text-center text-sm text-muted-foreground font-medium" style={{ marginTop: '1rem' }}>
-                  Tip: Zoom and move the image to pick which part will be converted.
-                </p>
               </div>
 
               {/* Preview Result Panel */}

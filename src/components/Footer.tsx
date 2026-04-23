@@ -34,7 +34,7 @@ export const Footer: React.FC<FooterProps> = ({ currentPage, onPageChange }) => 
               About
             </h3>
             <p style={{ color: '#717182', fontSize: '12px', lineHeight: '1.6' }}>
-              Tomodachi Dream Image Converter is a fan-made tool for converting images to Tomodachi Life game format.
+              ResizeMe is a fan-made tool for converting images to Tomodachi Life game format.
             </p>
           </div>
 
@@ -131,6 +131,25 @@ export const Footer: React.FC<FooterProps> = ({ currentPage, onPageChange }) => 
                   GitHub
                 </a>
               </li>
+              <li style={{ marginTop: '12px' }}>
+                <a
+                  href="https://ko-fi.com/L4L51YB9IR"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-block',
+                    backgroundColor: '#72a4f2',
+                    color: 'white',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    textDecoration: 'none',
+                    padding: '8px 12px',
+                    borderRadius: '8px'
+                  }}
+                >
+                  Support me on Ko-fi
+                </a>
+              </li>
             </ul>
           </div>
         </div>
@@ -147,7 +166,7 @@ export const Footer: React.FC<FooterProps> = ({ currentPage, onPageChange }) => 
             This project is not affiliated with, endorsed by, or created by Nintendo.
           </p>
           <p style={{ margin: '0' }}>
-            © 2026 Tomodachi Dream Image Converter. Licensed under MIT License.
+            © 2026 ResizeMe. Licensed under MIT License.
           </p>
         </div>
       </div>
