@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { HelpCircle } from 'lucide-react';
 import { CANVAS_SIZES, CanvasSizeKey } from '../lib/palettes';
 import { QuantizationMethod } from '../lib/quantizer';
 import { DETAIL_LEVELS, DetailLevel } from '../lib/imageProcessor';
+import { Tooltip } from './Tooltip';
 
 interface ControlPanelProps {
   selectedCanvasSize: CanvasSizeKey;
@@ -17,45 +17,6 @@ interface ControlPanelProps {
   onDetailLevelChange: (level: DetailLevel) => void;
   onPageChange: (page: 'contact') => void;
 }
-
-interface TooltipProps {
-  text: string;
-}
-
-const Tooltip: React.FC<TooltipProps> = ({ text }) => {
-  const [isVisible, setIsVisible] = useState(false);
-
-  return (
-    <div
-      style={{ position: 'relative', display: 'inline-flex', cursor: 'help' }}
-      onMouseEnter={() => setIsVisible(true)}
-      onMouseLeave={() => setIsVisible(false)}
-    >
-      <HelpCircle size={16} style={{ color: '#a6a6a6' }} />
-      {isVisible && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '100%',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            backgroundColor: '#2b2b2b',
-            color: 'white',
-            padding: '6px 8px',
-            borderRadius: '4px',
-            fontSize: '12px',
-            whiteSpace: 'nowrap',
-            marginBottom: '4px',
-            zIndex: 1000,
-            pointerEvents: 'none'
-          }}
-        >
-          {text}
-        </div>
-      )}
-    </div>
-  );
-};
 
 const ValuePill: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <span
@@ -162,14 +123,17 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     }
   };
 
+  const maxColorsLimit = paletteMode === 'colorRange' ? 256 : 84;
+  const isUnlimited = tempMaxColors >= maxColorsLimit;
+
   return (
     <div className="space-y-6">
-      {/* Color Reduction and Color Palette */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(250px, 100%), 1fr))', gap: 'clamp(1rem, 3vw, 2rem)' }}>
+      {/* Style and Palette */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: 'clamp(1rem, 3vw, 1.5rem)' }}>
         <div>
           <div style={TITLE_ROW_STYLE}>
-            <h3 className="text-base font-bold" style={SECTION_TITLE_STYLE}>Color Reduction</h3>
-            <Tooltip text="Choose how colors are simplified. Solid uses single colors, Blended mixes nearby colors for smoother transitions." />
+            <h3 className="text-base font-bold" style={SECTION_TITLE_STYLE}>Style</h3>
+            <Tooltip text="Solid maps each pixel to the nearest color. Blended dithers nearby colors for smoother gradients." />
           </div>
           <select
             value={quantizationMethod}
@@ -184,8 +148,8 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
 
         <div>
           <div style={TITLE_ROW_STYLE}>
-            <h3 className="text-base font-bold" style={SECTION_TITLE_STYLE}>Color Palette</h3>
-            <Tooltip text="In-Game uses the Tomodachi colors. Custom uses any colors from your image." />
+            <h3 className="text-base font-bold" style={SECTION_TITLE_STYLE}>Palette</h3>
+            <Tooltip text="In-Game uses the official Tomodachi Life face-paint colors. Custom extracts colors directly from your image." />
           </div>
           <select
             value={paletteMode}
@@ -199,13 +163,13 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         </div>
       </div>
 
-      {/* Detail Level and Max Colors */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(250px, 100%), 1fr))', gap: 'clamp(1rem, 3vw, 2rem)' }}>
+      {/* Detail and Colors */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: 'clamp(1rem, 3vw, 1.5rem)' }}>
         <div>
           <div style={TITLE_ROW_STYLE}>
-            <h3 className="text-base font-bold" style={SECTION_TITLE_STYLE}>Block Size:</h3>
+            <h3 className="text-base font-bold" style={SECTION_TITLE_STYLE}>Detail</h3>
             <ValuePill>x{DETAIL_LEVELS[tempDetailLevel]}</ValuePill>
-            <Tooltip text="Larger blocks = simpler image. x1 = tiny detailed blocks, x27 = large simple blocks." />
+            <Tooltip text="Fine keeps small sharp pixels. Chunky gives a bolder block look." />
           </div>
           <input
             type="range"
@@ -217,58 +181,36 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             onPointerDown={handleDetailPointerDown}
             onPointerUp={handleDetailPointerUp}
             className="w-full h-3 bg-linear-to-r from-secondary to-accent rounded-full appearance-none cursor-pointer accent-primary"
-            style={{
-              '--range-fill': `${(tempDetailLevel / 5) * 100}%`
-            } as React.CSSProperties}
+            style={{ '--range-fill': `${(tempDetailLevel / 5) * 100}%` } as React.CSSProperties}
           />
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
+            <span style={{ fontSize: '11px', color: '#a6a6a6' }}>Fine</span>
+            <span style={{ fontSize: '11px', color: '#a6a6a6' }}>Chunky</span>
+          </div>
         </div>
 
         <div>
-          {paletteMode === 'colorRange' ? (
-            <>
-              <div style={TITLE_ROW_STYLE}>
-                <h3 className="text-base font-bold" style={SECTION_TITLE_STYLE}>Max Colors:</h3>
-                <ValuePill>{tempMaxColors === 256 ? 'Unlimited' : tempMaxColors}</ValuePill>
-                <Tooltip text="Fewer colors = simpler results. Slide to the right for unlimited colors." />
-              </div>
-              <input
-                type="range"
-                min="1"
-                max="256"
-                step="1"
-                value={tempMaxColors}
-                onChange={handleMaxColorsChange}
-                onPointerDown={handleMaxColorsPointerDown}
-                onPointerUp={handleMaxColorsPointerUp}
-                className="w-full h-3 bg-linear-to-r from-secondary to-accent rounded-full appearance-none cursor-pointer accent-primary"
-                style={{
-                  '--range-fill': `${((tempMaxColors - 1) / (256 - 1)) * 100}%`
-                } as React.CSSProperties}
-              />
-            </>
-          ) : (
-            <>
-              <div style={TITLE_ROW_STYLE}>
-                <h3 className="text-base font-bold" style={SECTION_TITLE_STYLE}>Max Colors:</h3>
-                <ValuePill>{tempMaxColors === 84 ? 'Unlimited' : tempMaxColors}</ValuePill>
-                <Tooltip text="Fewer colors = simpler results. Slide to the right for unlimited colors." />
-              </div>
-              <input
-                type="range"
-                min="1"
-                max="84"
-                step="1"
-                value={tempMaxColors}
-                onChange={handleMaxColorsChange}
-                onPointerDown={handleMaxColorsPointerDown}
-                onPointerUp={handleMaxColorsPointerUp}
-                className="w-full h-3 bg-linear-to-r from-secondary to-accent rounded-full appearance-none cursor-pointer accent-primary"
-                style={{
-                  '--range-fill': `${((tempMaxColors - 1) / (84 - 1)) * 100}%`
-                } as React.CSSProperties}
-              />
-            </>
-          )}
+          <div style={TITLE_ROW_STYLE}>
+            <h3 className="text-base font-bold" style={SECTION_TITLE_STYLE}>Colors</h3>
+            <ValuePill>{isUnlimited ? 'Unlimited' : tempMaxColors}</ValuePill>
+            <Tooltip text="Limit the number of colors used. Fewer colors gives a flatter look. All the way right = unlimited." />
+          </div>
+          <input
+            type="range"
+            min="1"
+            max={maxColorsLimit}
+            step="1"
+            value={tempMaxColors}
+            onChange={handleMaxColorsChange}
+            onPointerDown={handleMaxColorsPointerDown}
+            onPointerUp={handleMaxColorsPointerUp}
+            className="w-full h-3 bg-linear-to-r from-secondary to-accent rounded-full appearance-none cursor-pointer accent-primary"
+            style={{ '--range-fill': `${((tempMaxColors - 1) / (maxColorsLimit - 1)) * 100}%` } as React.CSSProperties}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
+            <span style={{ fontSize: '11px', color: '#a6a6a6' }}>1</span>
+            <span style={{ fontSize: '11px', color: '#a6a6a6' }}>Unlimited</span>
+          </div>
         </div>
       </div>
     </div>

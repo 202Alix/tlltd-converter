@@ -678,6 +678,7 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
           <button
             onClick={() => onToggleGrid(!showGrid)}
             title="Toggle grid overlay"
+            aria-label="Toggle pixel grid overlay"
             className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
             style={{
               backgroundColor: showGrid ? '#FF8000' : '#FFDA85',
@@ -690,18 +691,21 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
           <button
             onClick={handleDownload}
             title="Download as PNG"
-            className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold disabled:opacity-50"
+            aria-label="Download converted image as PNG"
+            className="px-4 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold disabled:opacity-50"
             style={{
-              backgroundColor: '#FFDA85',
-              color: 'black',
+              backgroundColor: COLOR_PRIMARY,
+              color: 'white',
             }}
             disabled={!convertedImageData}
           >
             <Download strokeWidth={3} className="w-5 h-5" />
+            <span>Download PNG</span>
           </button>
           <button
             onClick={() => setIsFullscreen(true)}
             title="Fullscreen"
+            aria-label="Open fullscreen view"
             className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
             style={{
               backgroundColor: COLOR_SECONDARY,
@@ -714,83 +718,85 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
         </div>
       </div>
 
-      {/* Zoom controls centered */}
-      <div className="flex w-full items-center gap-2" style={{ justifyContent: 'center' }}>
-        <button
-          onClick={() => handleZoomChange(zoomPercent - 10)}
-          title="Zoom out"
-          className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 font-bold"
-          style={{
-            color: '#2b2b2b',
-            flexShrink: 0
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = '#FF8000')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = '#2b2b2b')}
-        >
-          <ZoomOut strokeWidth={3} className="w-5 h-5" />
-        </button>
-        <input
-          type="range"
-          min="10"
-          max="1000"
-          step="1"
-          value={zoomPercent}
-          onChange={(e) => {
-            const newValue = parseInt(e.target.value);
-            handleZoomChange(newValue);
-            updateSliderFill(newValue, 10, 1000, e.currentTarget);
-          }}
-          style={{
-            accentColor: '#FF8000',
-            appearance: 'none',
-            width: '100%',
-            height: '8px',
-            margin: 0,
-            marginBlock: 0,
-            borderRadius: '4px',
-            outline: 'none',
-            WebkitAppearance: 'none',
-            '--range-fill': `${((zoomPercent - 10) / (1000 - 10)) * 100}%`,
-            flex: 1,
-            minWidth: 0
-          } as React.CSSProperties}
-        />
-        <button
-          onClick={() => handleZoomChange(zoomPercent + 10)}
-          title="Zoom in"
-          className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 font-bold"
-          style={{
-            color: '#2b2b2b',
-            flexShrink: 0
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = '#FF8000')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = '#2b2b2b')}
-        >
-          <ZoomIn strokeWidth={3} className="w-5 h-5" />
-        </button>
-        <button
-          onClick={() => {
-            setZoomPercent(100);
-            setViewportCenterX(null);
-            setViewportCenterY(null);
-            setPanX(0);
-            setPanY(0);
-          }}
-          title="Reset zoom"
-          className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
-          style={{
-            color: '#2b2b2b',
-            flexShrink: 0
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = '#FF8000')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = '#2b2b2b')}
-        >
-          <RotateCcw strokeWidth={3} className="w-5 h-5" />
-        </button>
-      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: '0.25rem' }}>
+        {/* Zoom controls centered */}
+        <div className="flex w-full items-center gap-2" style={{ justifyContent: 'center' }}>
+          <button
+            onClick={() => handleZoomChange(zoomPercent - 10)}
+            title="Zoom out"
+            className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 font-bold"
+            style={{
+              color: '#2b2b2b',
+              flexShrink: 0
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = '#FF8000')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = '#2b2b2b')}
+          >
+            <ZoomOut strokeWidth={3} className="w-5 h-5" />
+          </button>
+          <input
+            type="range"
+            min="10"
+            max="1000"
+            step="1"
+            value={zoomPercent}
+            onChange={(e) => {
+              const newValue = parseInt(e.target.value);
+              handleZoomChange(newValue);
+              updateSliderFill(newValue, 10, 1000, e.currentTarget);
+            }}
+            style={{
+              accentColor: '#FF8000',
+              appearance: 'none',
+              width: '100%',
+              height: '8px',
+              margin: 0,
+              marginBlock: 0,
+              borderRadius: '4px',
+              outline: 'none',
+              WebkitAppearance: 'none',
+              '--range-fill': `${((zoomPercent - 10) / (1000 - 10)) * 100}%`,
+              flex: 1,
+              minWidth: 0
+            } as React.CSSProperties}
+          />
+          <button
+            onClick={() => handleZoomChange(zoomPercent + 10)}
+            title="Zoom in"
+            className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 font-bold"
+            style={{
+              color: '#2b2b2b',
+              flexShrink: 0
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = '#FF8000')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = '#2b2b2b')}
+          >
+            <ZoomIn strokeWidth={3} className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => {
+              setZoomPercent(100);
+              setViewportCenterX(null);
+              setViewportCenterY(null);
+              setPanX(0);
+              setPanY(0);
+            }}
+            title="Reset zoom"
+            className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
+            style={{
+              color: '#2b2b2b',
+              flexShrink: 0
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = '#FF8000')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = '#2b2b2b')}
+          >
+            <RotateCcw strokeWidth={3} className="w-5 h-5" />
+          </button>
+        </div>
 
-      <div className="text-center text-sm font-medium" style={{ marginTop: '0.5rem', color: '#000000' }}>
-        Zoom: {zoomPercent}%
+        <div className="text-center text-sm font-medium" style={{ marginTop: 0, color: '#000000' }}>
+          Zoom: {zoomPercent}%
+        </div>
       </div>
         </>
       )}
@@ -975,6 +981,7 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
                  <button
                    onClick={() => onToggleGrid(!showGrid)}
                    title="Toggle grid overlay"
+                   aria-label="Toggle pixel grid overlay"
                    className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
                    style={{
                      backgroundColor: showGrid ? COLOR_PRIMARY : COLOR_SECONDARY,
@@ -987,18 +994,21 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
                  <button
                    onClick={handleDownload}
                    title="Download as PNG"
-                   className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold disabled:opacity-50"
+                   aria-label="Download converted image as PNG"
+                   className="px-4 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold disabled:opacity-50"
                    style={{
-                     backgroundColor: '#FFDA85',
-                     color: 'black',
+                     backgroundColor: COLOR_PRIMARY,
+                     color: 'white',
                    }}
                    disabled={!convertedImageData}
                  >
                    <Download strokeWidth={3} className="w-5 h-5" />
+                   <span>Download PNG</span>
                  </button>
                  <button
                    onClick={() => setIsFullscreen(false)}
                    title="Close fullscreen"
+                   aria-label="Close fullscreen view"
                    className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
                    style={{
                      backgroundColor: '#FFDA85',

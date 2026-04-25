@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
-import { ZoomIn, ZoomOut, RotateCcw, HelpCircle } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { CANVAS_SIZES, CanvasSizeKey } from '../lib/palettes';
+import { Tooltip } from './Tooltip';
 
 interface CanvasPreviewProps {
   sourceImageData: ImageData;
@@ -9,41 +10,6 @@ interface CanvasPreviewProps {
   positionY: number;
   onCropChange: (x: number, y: number, width: number, height: number) => void;
 }
-
-const Tooltip: React.FC<{ text: string }> = ({ text }) => {
-  const [isVisible, setIsVisible] = useState(false);
-
-  return (
-    <div
-      style={{ position: 'relative', display: 'inline-flex', cursor: 'help', flexShrink: 0 }}
-      onMouseEnter={() => setIsVisible(true)}
-      onMouseLeave={() => setIsVisible(false)}
-    >
-      <HelpCircle size={16} style={{ color: '#a6a6a6' }} />
-      {isVisible && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '100%',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            backgroundColor: '#2b2b2b',
-            color: 'white',
-            padding: '6px 8px',
-            borderRadius: '4px',
-            fontSize: '12px',
-            whiteSpace: 'nowrap',
-            marginBottom: '4px',
-            zIndex: 1000,
-            pointerEvents: 'none'
-          }}
-        >
-          {text}
-        </div>
-      )}
-    </div>
-  );
-};
 
 export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
   sourceImageData,
