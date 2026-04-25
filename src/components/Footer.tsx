@@ -34,7 +34,7 @@ export const Footer: React.FC<FooterProps> = ({ currentPage, onPageChange }) => 
               About
             </h3>
             <p style={{ color: '#717182', fontSize: '12px', lineHeight: '1.6' }}>
-              ResizeMe is a fan-made tool for converting images to Tomodachi Life game format.
+              ResizeMee is a fan-made tool for converting images to Tomodachi Life game format.
             </p>
           </div>
 
@@ -166,7 +166,7 @@ export const Footer: React.FC<FooterProps> = ({ currentPage, onPageChange }) => 
             This project is not affiliated with, endorsed by, or created by Nintendo.
           </p>
           <p style={{ margin: '0' }}>
-            © 2026 ResizeMe. Licensed under MIT License.
+            © 2026 ResizeMee. Licensed under MIT License.
           </p>
         </div>
       </div>

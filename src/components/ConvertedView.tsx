@@ -57,6 +57,7 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
   const paletteColors = PALETTES.palette1.colors;
   const targetSize = CANVAS_SIZES[canvasSize];
   const targetAspectRatio = targetSize.width / targetSize.height;
+
   const filterRgb = filterColor
     ? {
         r: parseInt(filterColor.slice(1, 3), 16),
@@ -607,7 +608,7 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
   }, [isFullscreen]);
 
   return (
-    <div className="space-y-8" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', gap: '2rem' }}>
       {!isFullscreen && (
         <>
           <canvas
@@ -714,7 +715,7 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
       </div>
 
       {/* Zoom controls centered */}
-      <div className="flex w-full items-center" style={{ justifyContent: 'center', gap: 'clamp(0.5rem, 2vw, 1rem)' }}>
+      <div className="flex w-full items-center gap-2" style={{ justifyContent: 'center' }}>
         <button
           onClick={() => handleZoomChange(zoomPercent - 10)}
           title="Zoom out"
@@ -744,6 +745,8 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
             appearance: 'none',
             width: '100%',
             height: '8px',
+            margin: 0,
+            marginBlock: 0,
             borderRadius: '4px',
             outline: 'none',
             WebkitAppearance: 'none',
@@ -786,7 +789,7 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
         </button>
       </div>
 
-      <div className="text-center text-sm text-muted-foreground font-medium" style={{ marginTop: '1rem' }}>
+      <div className="text-center text-sm font-medium" style={{ marginTop: '0.5rem', color: '#000000' }}>
         Zoom: {zoomPercent}%
       </div>
         </>
@@ -921,6 +924,8 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
                      appearance: 'none',
                      flex: 1,
                      height: '8px',
+                     margin: 0,
+                     marginBlock: 0,
                      borderRadius: '4px',
                      outline: 'none',
                      WebkitAppearance: 'none',

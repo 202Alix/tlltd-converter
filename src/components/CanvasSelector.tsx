@@ -8,10 +8,10 @@ interface CanvasSelectorProps {
 }
 
 type CategoryKey = keyof typeof CANVAS_CATEGORIES;
-type SubcategoryKey = string;
 
 // Cache for rendered mask canvases
 const maskCanvasCache = new Map<string, string>();
+const missingMaskWarnings = new Set<string>();
 
 // Render a mask with a specific color
 const renderMaskWithColor = async (maskPath: string, color: string): Promise<string> => {
@@ -73,7 +73,13 @@ const renderMaskWithColor = async (maskPath: string, color: string): Promise<str
       maskCanvasCache.set(cacheKey, dataUrl);
       resolve(dataUrl);
     };
-    img.onerror = () => resolve('');
+    img.onerror = () => {
+      if (!missingMaskWarnings.has(maskPath)) {
+        console.warn(`Missing or unreadable selector mask: ${maskPath}`);
+        missingMaskWarnings.add(maskPath);
+      }
+      resolve('');
+    };
     img.src = maskPath;
   });
 };
@@ -84,11 +90,14 @@ const CARD_STYLE = {
   border: 'none',
   borderRadius: '12px',
   boxShadow: '0 6px 0 #eeedef',
+  boxSizing: 'border-box' as const,
+  width: '100%',
+  minWidth: 0,
   display: 'flex',
   flexDirection: 'column' as const,
   alignItems: 'center',
   justifyContent: 'flex-start',
-  padding: '2rem',
+  padding: 'clamp(0.75rem, 2.5vw, 2rem)',
   cursor: 'pointer',
   transition: 'all 0.2s',
 };
@@ -99,58 +108,19 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
 }) => {
   // Find which category the selected size belongs to, default to Treasures
   const currentCategory = (Object.entries(CANVAS_CATEGORIES).find(([_, category]) => {
-    if ('items' in category) {
-      return category.items.includes(selectedCanvasSize);
-    } else if ('subcategories' in category) {
-      return Object.values(category.subcategories).some(sub => sub.items.includes(selectedCanvasSize));
-    }
-    return false;
+    return category.items.includes(selectedCanvasSize);
   })?.[0] || 'Treasures') as CategoryKey;
 
   const [selectedCategory, setSelectedCategory] = useState<CategoryKey>(currentCategory);
 
-  // Get first subcategory key if category has subcategories
-  const getFirstSubcategoryKey = (category: CategoryKey): SubcategoryKey | null => {
-    const categoryData = CANVAS_CATEGORIES[category];
-    if ('subcategories' in categoryData) {
-      return Object.keys(categoryData.subcategories)[0] || null;
-    }
-    return null;
-  };
-
-  const [selectedSubcategory, setSelectedSubcategory] = useState<SubcategoryKey | null>(
-    getFirstSubcategoryKey(currentCategory)
-  );
-
   const currentCategoryData = CANVAS_CATEGORIES[selectedCategory];
-  const hasSubcategories = 'subcategories' in currentCategoryData;
 
   const handleCategorySelect = (category: CategoryKey) => {
     setSelectedCategory(category);
 
     const categoryData = CANVAS_CATEGORIES[category];
-    if ('items' in categoryData && categoryData.items.length > 0) {
-      // Auto-select first item if no subcategories
+    if (categoryData.items.length > 0) {
       onCanvasSizeChange(categoryData.items[0]);
-      setSelectedSubcategory(null);
-    } else if ('subcategories' in categoryData) {
-      // Auto-select first sub-category and its first item
-      const firstSubcategoryKey = Object.keys(categoryData.subcategories)[0];
-      if (firstSubcategoryKey) {
-        setSelectedSubcategory(firstSubcategoryKey);
-        const firstItem = (categoryData as any).subcategories[firstSubcategoryKey].items[0];
-        if (firstItem) {
-          onCanvasSizeChange(firstItem);
-        }
-      }
-    }
-  };
-
-  const handleSubcategorySelect = (subcategory: SubcategoryKey) => {
-    setSelectedSubcategory(subcategory);
-    const subcategoryData = (currentCategoryData as any).subcategories[subcategory];
-    if (subcategoryData.items.length > 0) {
-      onCanvasSizeChange(subcategoryData.items[0]);
     }
   };
 
@@ -159,12 +129,7 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
   };
 
   const getItemsToDisplay = (): CanvasSizeKey[] => {
-    if ('items' in currentCategoryData) {
-      return currentCategoryData.items;
-    } else if (selectedSubcategory && 'subcategories' in currentCategoryData) {
-      return (currentCategoryData as any).subcategories[selectedSubcategory].items;
-    }
-    return [];
+    return currentCategoryData.items;
   };
 
   const itemsToDisplay = getItemsToDisplay();
@@ -227,7 +192,9 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
         renderMaskWithColor(
           `${import.meta.env.BASE_URL}masks/${size}.jpg`,
           categoryColor
-        ).then(setMaskImage);
+        ).then((result) => {
+          setMaskImage(result);
+        });
       }
     }, [size, categoryColor, isMasked]);
 
@@ -237,8 +204,9 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
           src={maskImage}
           alt={size}
           style={{
-            aspectRatio,
-            ...shapeStyle,
+            width: '60px',
+            height: '60px',
+            objectFit: 'contain',
             opacity: isSelected ? 1 : 0.3,
           }}
         />
@@ -262,7 +230,7 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
     <div className="space-y-6">
       {/* Categories Section */}
       <div>
-        <h3 className="text-base font-bold" style={{ color: 'black', marginBottom: '12px', fontSize: '20px' }}>
+        <h3 className="text-base font-bold" style={{ color: 'black', marginBottom: '12px', fontSize: 'clamp(1rem, 4.8vw, 20px)' }}>
           Categories
         </h3>
         <div className="canvas-selector-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 'clamp(1rem, 3vw, 2rem)', maxWidth: '100%' }}>
@@ -293,9 +261,13 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
                   size: 60,
                   strokeWidth: 2,
                   color: getCategoryGroupColor(key as CategoryKey),
+                  style: {
+                    width: 'clamp(36px, 10vw, 60px)',
+                    height: 'clamp(36px, 10vw, 60px)',
+                  },
                 })}
               </div>
-              <h4 style={{ color: 'black', fontWeight: 'bold', margin: '0', fontSize: '16px', textAlign: 'center' }}>
+              <h4 style={{ color: 'black', fontWeight: 'bold', margin: '0', fontSize: 'clamp(12px, 3.6vw, 16px)', textAlign: 'center' }}>
                 {category.name}
               </h4>
             </button>
@@ -305,7 +277,7 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
 
       {/* Base Shapes Section */}
       <div>
-        <h3 className="text-base font-bold" style={{ color: 'black', marginBottom: '12px', fontSize: '20px' }}>
+        <h3 className="text-base font-bold" style={{ color: 'black', marginBottom: '12px', fontSize: 'clamp(1rem, 4.8vw, 20px)' }}>
           Base shapes
         </h3>
         <div className="canvas-selector-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 'clamp(1rem, 3vw, 2rem)', maxWidth: '100%' }}>
@@ -334,8 +306,8 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
               {/* Fixed-size square container for the shape */}
               <div
                 style={{
-                  width: '80px',
-                  height: '80px',
+                  width: 'clamp(52px, 16vw, 80px)',
+                  height: 'clamp(52px, 16vw, 80px)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -353,14 +325,14 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
                 />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', textAlign: 'center', width: '100%' }}>
-                <h4 style={{ color: 'black', fontWeight: 'bold', margin: '0', fontSize: '13px' }}>
+                <h4 style={{ color: 'black', fontWeight: 'bold', margin: '0', fontSize: 'clamp(11px, 3.2vw, 13px)' }}>
                   {size}
                 </h4>
                 <p
                   style={{
                     color: '#717182',
                     margin: '0',
-                    fontSize: '14px',
+                    fontSize: 'clamp(11px, 3.2vw, 14px)',
                   }}
                 >
                   {CANVAS_SIZES[size].width}×{CANVAS_SIZES[size].height}px

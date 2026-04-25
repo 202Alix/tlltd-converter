@@ -4,7 +4,7 @@ export const License = () => (
       <h1 style={{ fontSize: '28px', marginBottom: '16px', fontWeight: 'bold' }}>License & Copyright</h1>
 
       <h2 style={{ fontSize: '20px', marginTop: '24px', marginBottom: '12px', fontWeight: 'bold' }}>Software License</h2>
-      <p>ResizeMe source code is provided under the MIT License.</p>
+      <p>ResizeMee source code is provided under the MIT License.</p>
       <p>You are free to use, modify, and distribute this software for personal and commercial purposes, provided you include the license notice.</p>
 
       <h2 style={{ fontSize: '20px', marginTop: '24px', marginBottom: '12px', fontWeight: 'bold' }}>Third-Party Licenses</h2>

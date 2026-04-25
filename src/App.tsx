@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Upload, ZoomIn, ZoomOut, Grid3x3, Download, RotateCcw, HelpCircle, Hand, Pipette, Wand2, ChevronLeft } from 'lucide-react';
-import LogoUrl from './assets/Logo_ResizeMe.svg';
+import LogoUrl from './assets/Logo_ResizeMee.svg';
 import { ImageUpload } from './components/ImageUpload';
 import { ControlPanel } from './components/ControlPanel';
 import { CanvasPreview } from './components/CanvasPreview';
@@ -119,9 +119,6 @@ export default function App() {
 
   const handleCanvasSizeChange = (size: CanvasSizeKey) => {
     setSelectedCanvasSize(size);
-    if (sourceImageData) {
-      processConversion(sourceImageData, size, quantizationMethod, cropParams.x, cropParams.y, cropParams.width, cropParams.height, detailLevel);
-    }
   };
 
   const handleQuantizationMethodChange = (method: QuantizationMethod) => {
@@ -267,7 +264,7 @@ export default function App() {
     <>
       {/* Render legal pages */}
       {currentPage === 'privacy' && (
-        <div className="min-h-screen text-foreground" style={{ paddingLeft: 'clamp(16px, 5vw, 32px)', paddingRight: 'clamp(16px, 5vw, 32px)', backgroundColor: 'transparent' }}>
+        <div className="min-h-screen text-foreground" style={{ paddingLeft: 'clamp(16px, 5vw, 32px)', paddingRight: 'clamp(16px, 5vw, 32px)', paddingBottom: 'clamp(24px, 6vw, 48px)', backgroundColor: 'transparent' }}>
           <div style={{ paddingTop: '16px' }}>
             <button
               onClick={() => setCurrentPage('app')}
@@ -286,7 +283,7 @@ export default function App() {
       )}
 
       {currentPage === 'terms' && (
-        <div className="min-h-screen text-foreground" style={{ paddingLeft: 'clamp(16px, 5vw, 32px)', paddingRight: 'clamp(16px, 5vw, 32px)', backgroundColor: 'transparent' }}>
+        <div className="min-h-screen text-foreground" style={{ paddingLeft: 'clamp(16px, 5vw, 32px)', paddingRight: 'clamp(16px, 5vw, 32px)', paddingBottom: 'clamp(24px, 6vw, 48px)', backgroundColor: 'transparent' }}>
           <div style={{ paddingTop: '16px' }}>
             <button
               onClick={() => setCurrentPage('app')}
@@ -305,7 +302,7 @@ export default function App() {
       )}
 
       {currentPage === 'license' && (
-        <div className="min-h-screen text-foreground" style={{ paddingLeft: 'clamp(16px, 5vw, 32px)', paddingRight: 'clamp(16px, 5vw, 32px)', backgroundColor: 'transparent' }}>
+        <div className="min-h-screen text-foreground" style={{ paddingLeft: 'clamp(16px, 5vw, 32px)', paddingRight: 'clamp(16px, 5vw, 32px)', paddingBottom: 'clamp(24px, 6vw, 48px)', backgroundColor: 'transparent' }}>
           <div style={{ paddingTop: '16px' }}>
             <button
               onClick={() => setCurrentPage('app')}
@@ -324,7 +321,7 @@ export default function App() {
       )}
 
       {currentPage === 'contact' && (
-        <div className="min-h-screen text-foreground" style={{ paddingLeft: 'clamp(16px, 5vw, 32px)', paddingRight: 'clamp(16px, 5vw, 32px)', backgroundColor: 'transparent' }}>
+        <div className="min-h-screen text-foreground" style={{ paddingLeft: 'clamp(16px, 5vw, 32px)', paddingRight: 'clamp(16px, 5vw, 32px)', paddingBottom: 'clamp(24px, 6vw, 48px)', backgroundColor: 'transparent' }}>
           <div style={{ paddingTop: '16px' }}>
             <button
               onClick={() => setCurrentPage('app')}
@@ -354,7 +351,7 @@ export default function App() {
                 className="text-2xl sm:text-3xl font-black"
                 style={{ color: 'black', lineHeight: '1.2' }}
               >
-                ResizeMe
+                ResizeMee
               </h1>
             </div>
             {sourceImageData && (
@@ -387,12 +384,12 @@ export default function App() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(1.5rem, 5vw, 2rem)' }}>
             {/* Shape Selection Section */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <div style={{ backgroundColor: 'white', boxShadow: '0 6px 0 #FFC336', padding: '1.5rem 2rem 0.5rem 2rem', textAlign: 'center', borderRadius: '24px 24px 0 0' }}>
-                <h2 style={{ color: 'black', margin: '0', fontSize: '28px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+              <div style={{ backgroundColor: 'white', boxShadow: '0 6px 0 #FFC336', padding: 'clamp(0.9rem, 4vw, 1.5rem) clamp(1rem, 5vw, 2rem) 0.5rem', textAlign: 'center', borderRadius: '24px 24px 0 0', width: 'fit-content', maxWidth: '100%' }}>
+                <h2 style={{ color: 'black', margin: '0', fontSize: 'clamp(1.4rem, 6vw, 28px)', fontWeight: 'bold', whiteSpace: 'normal', lineHeight: '1.15' }}>
                   Shape Selection
                 </h2>
               </div>
-              <div style={{ backgroundColor: 'white', boxShadow: '0 6px 0 #FFC336', padding: '2rem', width: '100%', borderRadius: '24px' }}>
+              <div style={{ backgroundColor: 'white', boxShadow: '0 6px 0 #FFC336', padding: 'clamp(1rem, 4vw, 2rem)', width: '100%', borderRadius: '24px', maxWidth: '100%', boxSizing: 'border-box' }}>
                 <CanvasSelector
                   selectedCanvasSize={selectedCanvasSize}
                   onCanvasSizeChange={handleCanvasSizeChange}
@@ -402,12 +399,12 @@ export default function App() {
 
             {/* Conversion Settings Section */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <div style={{ backgroundColor: 'white', boxShadow: '0 6px 0 #FFC336', padding: '1.5rem 2rem 0.5rem 2rem', textAlign: 'center', borderRadius: '24px 24px 0 0' }}>
-                <h2 style={{ color: 'black', margin: '0', fontSize: '28px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+              <div style={{ backgroundColor: 'white', boxShadow: '0 6px 0 #FFC336', padding: 'clamp(0.9rem, 4vw, 1.5rem) clamp(1rem, 5vw, 2rem) 0.5rem', textAlign: 'center', borderRadius: '24px 24px 0 0', width: 'fit-content', maxWidth: '100%' }}>
+                <h2 style={{ color: 'black', margin: '0', fontSize: 'clamp(1.4rem, 6vw, 28px)', fontWeight: 'bold', whiteSpace: 'normal', lineHeight: '1.15' }}>
                   Conversion Settings
                 </h2>
               </div>
-              <div style={{ backgroundColor: 'white', boxShadow: '0 6px 0 #FFC336', padding: '2rem', width: '100%', borderRadius: '24px' }}>
+              <div style={{ backgroundColor: 'white', boxShadow: '0 6px 0 #FFC336', padding: 'clamp(1rem, 4vw, 2rem)', width: '100%', borderRadius: '24px', maxWidth: '100%', boxSizing: 'border-box' }}>
                 <ControlPanel
                   selectedCanvasSize={selectedCanvasSize}
                   onCanvasSizeChange={handleCanvasSizeChange}
@@ -439,6 +436,8 @@ export default function App() {
                 <CanvasPreview
                   sourceImageData={sourceImageData}
                   canvasSize={selectedCanvasSize}
+                  positionX={cropParams.x}
+                  positionY={cropParams.y}
                   onCropChange={handleCropChange}
                 />
               </div>
@@ -468,19 +467,6 @@ export default function App() {
                   </div>
                 )}
               </div>
-            </div>
-
-            {/* AdSense Banner */}
-            <div className="mt-16 pt-16">
-              <ins className="adsbygoogle"
-                   style={{display:'block'}}
-                   data-ad-client="ca-pub-8354630116454420"
-                   data-ad-slot="7677098087"
-                   data-ad-format="auto"
-                   data-full-width-responsive="true"></ins>
-              <script>
-                {`(adsbygoogle = window.adsbygoogle || []).push({});`}
-              </script>
             </div>
           </div>
         )}

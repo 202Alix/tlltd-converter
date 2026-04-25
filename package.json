@@ -5,9 +5,15 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "validate:masks": "node scripts/validate-masks.mjs"
   },
-  "keywords": ["tomodachi", "image", "converter", "pixel-art"],
+  "keywords": [
+    "tomodachi",
+    "image",
+    "converter",
+    "pixel-art"
+  ],
   "author": "202alix",
   "license": "MIT",
   "description": "A web application that converts images to match the drawing constraints of Tomodachi Life: Living the Dream.",
@@ -26,6 +32,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.5.0",
+    "image-size": "^2.0.2",
     "postcss": "^8.5.10",
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.3",

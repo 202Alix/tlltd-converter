@@ -1,16 +1,55 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
+import { ZoomIn, ZoomOut, RotateCcw, HelpCircle } from 'lucide-react';
 import { CANVAS_SIZES, CanvasSizeKey } from '../lib/palettes';
 
 interface CanvasPreviewProps {
   sourceImageData: ImageData;
   canvasSize: CanvasSizeKey;
+  positionX: number;
+  positionY: number;
   onCropChange: (x: number, y: number, width: number, height: number) => void;
 }
+
+const Tooltip: React.FC<{ text: string }> = ({ text }) => {
+  const [isVisible, setIsVisible] = useState(false);
+
+  return (
+    <div
+      style={{ position: 'relative', display: 'inline-flex', cursor: 'help', flexShrink: 0 }}
+      onMouseEnter={() => setIsVisible(true)}
+      onMouseLeave={() => setIsVisible(false)}
+    >
+      <HelpCircle size={16} style={{ color: '#a6a6a6' }} />
+      {isVisible && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '100%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: '#2b2b2b',
+            color: 'white',
+            padding: '6px 8px',
+            borderRadius: '4px',
+            fontSize: '12px',
+            whiteSpace: 'nowrap',
+            marginBottom: '4px',
+            zIndex: 1000,
+            pointerEvents: 'none'
+          }}
+        >
+          {text}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
   sourceImageData,
   canvasSize,
+  positionX,
+  positionY,
   onCropChange,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -21,6 +60,39 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [touchDistance, setTouchDistance] = useState(0);
 
+  const contentBounds = useMemo(() => {
+    const { data, width, height } = sourceImageData;
+    let minX = width;
+    let minY = height;
+    let maxX = -1;
+    let maxY = -1;
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const index = (y * width + x) * 4;
+        if (data[index + 3] === 0) {
+          continue;
+        }
+
+        if (x < minX) minX = x;
+        if (y < minY) minY = y;
+        if (x > maxX) maxX = x;
+        if (y > maxY) maxY = y;
+      }
+    }
+
+    if (maxX < minX || maxY < minY) {
+      return { x: 0, y: 0, width, height };
+    }
+
+    return {
+      x: minX,
+      y: minY,
+      width: maxX - minX + 1,
+      height: maxY - minY + 1,
+    };
+  }, [sourceImageData]);
+
   const targetSize = CANVAS_SIZES[canvasSize];
   const targetAspectRatio = targetSize.width / targetSize.height;
 
@@ -29,8 +101,8 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
   const viewportHeight = viewportWidth / targetAspectRatio;
 
   // Calculate base scale using largest dimension (Math.max) so image fills viewport
-  const baseScaleX = viewportWidth / sourceImageData.width;
-  const baseScaleY = viewportHeight / sourceImageData.height;
+  const baseScaleX = viewportWidth / contentBounds.width;
+  const baseScaleY = viewportHeight / contentBounds.height;
   const baseScale = Math.max(baseScaleX, baseScaleY);
 
   // Store the center point of what's visible in the image (in image coordinates)
@@ -50,8 +122,8 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
       newPanY = (viewportHeight / 2) - (viewportCenterY * zoom);
     } else {
       // Initial centering
-      const scaledWidth = sourceImageData.width * zoom;
-      const scaledHeight = sourceImageData.height * zoom;
+      const scaledWidth = contentBounds.width * zoom;
+      const scaledHeight = contentBounds.height * zoom;
       newPanX = (viewportWidth - scaledWidth) / 2;
       newPanY = (viewportHeight - scaledHeight) / 2;
     }
@@ -67,7 +139,7 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
         updateSliderFill(val, 10, 1000, slider as HTMLInputElement);
       }
     });
-  }, [sourceImageData, zoomPercent, baseScale, viewportWidth, viewportHeight, viewportCenterX, viewportCenterY]);
+  }, [sourceImageData, zoomPercent, baseScale, viewportWidth, viewportHeight, viewportCenterX, viewportCenterY, contentBounds.width, contentBounds.height]);
 
   // Store the capture values in state
   const [captureValues, setCaptureValues] = useState({ x: 0, y: 0, width: 0, height: 0 });
@@ -96,8 +168,8 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
 
     // Draw the source image at current zoom and pan
     const zoom = (zoomPercent / 100) * baseScale;
-    const scaledWidth = sourceImageData.width * zoom;
-    const scaledHeight = sourceImageData.height * zoom;
+    const scaledWidth = contentBounds.width * zoom;
+    const scaledHeight = contentBounds.height * zoom;
 
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = sourceImageData.width;
@@ -106,17 +178,19 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
     if (tempCtx) {
       tempCtx.putImageData(sourceImageData, 0, 0);
       ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(tempCanvas, panX, panY, scaledWidth, scaledHeight);
+      ctx.drawImage(tempCanvas, panX - (contentBounds.x * zoom), panY - (contentBounds.y * zoom), sourceImageData.width * zoom, sourceImageData.height * zoom);
     }
 
-    // Calculate what portion will actually be captured
-    const captureX = Math.max(0, -panX / zoom);
-    const captureY = Math.max(0, -panY / zoom);
-    const captureWidth = viewportWidth / zoom;
-    const captureHeight = viewportHeight / zoom;
+    // Convert the current placement into target-canvas coordinates.
+    const scaleX = targetSize.width / viewportWidth;
+    const scaleY = targetSize.height / viewportHeight;
+    const captureX = (panX - (contentBounds.x * zoom)) * scaleX;
+    const captureY = (panY - (contentBounds.y * zoom)) * scaleY;
+    const captureWidth = sourceImageData.width * zoom * scaleX;
+    const captureHeight = sourceImageData.height * zoom * scaleY;
 
     setCaptureValues({ x: captureX, y: captureY, width: captureWidth, height: captureHeight });
-  }, [sourceImageData, zoomPercent, panX, panY, viewportWidth, viewportHeight, baseScale]);
+  }, [sourceImageData, zoomPercent, panX, panY, viewportWidth, viewportHeight, baseScale, contentBounds.x, contentBounds.y, contentBounds.width, contentBounds.height]);
 
   // Notify parent only when capture values actually change - with debounce
   useEffect(() => {
@@ -136,8 +210,8 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
     if (!isDragging) return;
 
     const zoom = (zoomPercent / 100) * baseScale;
-    const scaledWidth = sourceImageData.width * zoom;
-    const scaledHeight = sourceImageData.height * zoom;
+    const scaledWidth = contentBounds.width * zoom;
+    const scaledHeight = contentBounds.height * zoom;
 
     // Allow panning even when image is smaller than viewport
     const maxX = Math.max(viewportWidth - scaledWidth, 0);
@@ -167,8 +241,8 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
     } else {
       // Trackpad two-finger scroll for panning
       const zoom = (zoomPercent / 100) * baseScale;
-      const scaledWidth = sourceImageData.width * zoom;
-      const scaledHeight = sourceImageData.height * zoom;
+      const scaledWidth = contentBounds.width * zoom;
+      const scaledHeight = contentBounds.height * zoom;
 
       const maxX = Math.max(viewportWidth - scaledWidth, 0);
       const maxY = Math.max(viewportHeight - scaledHeight, 0);
@@ -234,8 +308,8 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
     if (e.touches.length === 1 && isDragging) {
       e.preventDefault();
       const zoom = (zoomPercent / 100) * baseScale;
-      const scaledWidth = sourceImageData.width * zoom;
-      const scaledHeight = sourceImageData.height * zoom;
+      const scaledWidth = contentBounds.width * zoom;
+      const scaledHeight = contentBounds.height * zoom;
 
       const maxX = Math.max(viewportWidth - scaledWidth, 0);
       const maxY = Math.max(viewportHeight - scaledHeight, 0);
@@ -296,7 +370,23 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
         className="w-full cursor-move bg-input"
         style={{ maxWidth: '512px', height: 'auto', touchAction: 'none' }}
       />
-      <div className="flex gap-8 items-center" style={{ justifyContent: 'center', marginTop: '2rem', width: '100%' }}>
+      <div className="text-center text-sm font-medium" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '3.25rem', flexWrap: 'nowrap', justifyContent: 'center', color: '#000000', whiteSpace: 'nowrap' }}>
+        <span style={{ fontWeight: 400, color: '#000000' }}>Position:</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 400, color: '#000000' }}>
+          <span style={{ fontWeight: 400, color: '#000000' }}>x:</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '2px 8px', borderRadius: '9999px', backgroundColor: '#FFF3CC', color: '#000000', fontSize: 'inherit', fontWeight: 400, lineHeight: 1, whiteSpace: 'nowrap' }}>
+            {Math.round(positionX)}
+          </span>
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 400, color: '#000000' }}>
+          <span style={{ fontWeight: 400, color: '#000000' }}>y:</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '2px 8px', borderRadius: '9999px', backgroundColor: '#FFF3CC', color: '#000000', fontSize: 'inherit', fontWeight: 400, lineHeight: 1, whiteSpace: 'nowrap' }}>
+            {Math.round(positionY)}
+          </span>
+        </span>
+        <Tooltip text="These values show where the image is positioned on the converted canvas. Use them to place the image in the same spot again." />
+      </div>
+      <div className="flex gap-2 items-center" style={{ justifyContent: 'center', marginTop: '2rem', width: '100%' }}>
         <button
           onClick={() => handleZoomChange(zoomPercent - 10)}
           title="Zoom out"
@@ -326,6 +416,8 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
             appearance: 'none',
             width: '100%',
             height: '8px',
+            margin: 0,
+            marginBlock: 0,
             borderRadius: '4px',
             outline: 'none',
             WebkitAppearance: 'none',
@@ -367,7 +459,7 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
           <RotateCcw strokeWidth={3} className="w-5 h-5" />
         </button>
       </div>
-      <div className="text-center text-sm text-muted-foreground font-medium" style={{ marginTop: '1rem' }}>
+      <div className="text-center text-sm font-medium" style={{ marginTop: '1rem', color: '#000000' }}>
         Zoom: {zoomPercent}%
       </div>
     </div>

@@ -3,7 +3,17 @@
  * Masks are black and white JPEGs where white = render, black = skip
  */
 
+import { CANVAS_SIZES, CanvasSizeKey } from './palettes';
+
 const maskCache = new Map<string, ImageData>();
+const warnedMissingMasks = new Set<string>();
+
+const warnMissingMaskOnce = (canvasSize: string, reason: string): void => {
+  if (!warnedMissingMasks.has(canvasSize)) {
+    console.warn(`Mask unavailable for ${canvasSize}: ${reason}`);
+    warnedMissingMasks.add(canvasSize);
+  }
+};
 
 /**
  * Load a mask image for a given canvas size
@@ -20,6 +30,7 @@ export const loadMask = async (canvasSize: string): Promise<ImageData | null> =>
     const response = await fetch(maskPath);
 
     if (!response.ok) {
+      warnMissingMaskOnce(canvasSize, `HTTP ${response.status} at ${maskPath}`);
       return null; // Mask doesn't exist
     }
 
@@ -28,9 +39,13 @@ export const loadMask = async (canvasSize: string): Promise<ImageData | null> =>
 
     return new Promise((resolve) => {
       img.onload = () => {
+        const targetSize = CANVAS_SIZES[canvasSize as CanvasSizeKey];
+        const targetWidth = targetSize?.width ?? img.width;
+        const targetHeight = targetSize?.height ?? img.height;
+
         const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
         const ctx = canvas.getContext('2d');
 
         if (!ctx) {
@@ -38,18 +53,22 @@ export const loadMask = async (canvasSize: string): Promise<ImageData | null> =>
           return;
         }
 
-        ctx.drawImage(img, 0, 0);
-        const maskData = ctx.getImageData(0, 0, img.width, img.height);
+        ctx.imageSmoothingEnabled = true;
+        ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+        const maskData = ctx.getImageData(0, 0, targetWidth, targetHeight);
 
         // Cache it
         maskCache.set(canvasSize, maskData);
         resolve(maskData);
       };
-      img.onerror = () => resolve(null);
+      img.onerror = () => {
+        warnMissingMaskOnce(canvasSize, `image decode failed at ${maskPath}`);
+        resolve(null);
+      };
       img.src = URL.createObjectURL(blob);
     });
   } catch (error) {
-    console.warn(`Failed to load mask for ${canvasSize}:`, error);
+    warnMissingMaskOnce(canvasSize, String(error));
     return null;
   }
 };

@@ -64,30 +64,12 @@ export function resizeImage(
   const canvas = document.createElement('canvas');
   const tempCanvas = document.createElement('canvas');
 
-  // First, crop the source image if needed
-  let croppedData: ImageData;
-  if (sourceX !== 0 || sourceY !== 0 || sourceWidth !== undefined || sourceHeight !== undefined) {
-    sourceWidth = sourceWidth || sourceData.width;
-    sourceHeight = sourceHeight || sourceData.height;
-
-    tempCanvas.width = sourceWidth;
-    tempCanvas.height = sourceHeight;
-    const tempCtx = tempCanvas.getContext('2d');
-    if (!tempCtx) throw new Error('Could not get canvas context');
-
-    // Put the cropped portion
-    tempCtx.putImageData(sourceData, -sourceX, -sourceY);
-    croppedData = tempCtx.getImageData(0, 0, sourceWidth, sourceHeight);
-  } else {
-    croppedData = sourceData;
-  }
-
-  // Now resize to target dimensions
-  tempCanvas.width = croppedData.width;
-  tempCanvas.height = croppedData.height;
+  // Copy the source image and draw it into the target canvas at the requested placement.
+  tempCanvas.width = sourceData.width;
+  tempCanvas.height = sourceData.height;
   let tempCtx = tempCanvas.getContext('2d');
   if (!tempCtx) throw new Error('Could not get canvas context');
-  tempCtx.putImageData(croppedData, 0, 0);
+  tempCtx.putImageData(sourceData, 0, 0);
 
   // Draw onto the final canvas with resizing
   canvas.width = targetWidth;
@@ -96,7 +78,13 @@ export function resizeImage(
   if (!ctx) throw new Error('Could not get canvas context');
 
   ctx.imageSmoothingEnabled = false; // Pixelated look
-  ctx.drawImage(tempCanvas, 0, 0, targetWidth, targetHeight);
+  ctx.drawImage(
+    tempCanvas,
+    sourceX,
+    sourceY,
+    sourceWidth || sourceData.width,
+    sourceHeight || sourceData.height
+  );
 
   return ctx.getImageData(0, 0, targetWidth, targetHeight);
 }

@@ -57,6 +57,40 @@ const Tooltip: React.FC<TooltipProps> = ({ text }) => {
   );
 };
 
+const ValuePill: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <span
+    style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '2px 8px',
+      borderRadius: '9999px',
+      backgroundColor: '#FFF3CC',
+      color: '#2b2b2b',
+      fontSize: 'inherit',
+      fontWeight: 700,
+      lineHeight: 1,
+      whiteSpace: 'nowrap',
+      flexShrink: 0,
+    }}
+  >
+    {children}
+  </span>
+);
+
+const SECTION_TITLE_STYLE: React.CSSProperties = {
+  color: 'black',
+  fontSize: 'clamp(1rem, 4.6vw, 20px)',
+};
+
+const TITLE_ROW_STYLE: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '0.5rem',
+  flexWrap: 'wrap',
+  marginBottom: '0.5rem',
+};
+
 export const ControlPanel: React.FC<ControlPanelProps> = ({
   selectedCanvasSize,
   onCanvasSizeChange,
@@ -133,8 +167,8 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
       {/* Color Reduction and Color Palette */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(250px, 100%), 1fr))', gap: 'clamp(1rem, 3vw, 2rem)' }}>
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <h3 className="text-base font-bold" style={{ color: 'black', fontSize: '20px' }}>Color Reduction</h3>
+          <div style={TITLE_ROW_STYLE}>
+            <h3 className="text-base font-bold" style={SECTION_TITLE_STYLE}>Color Reduction</h3>
             <Tooltip text="Choose how colors are simplified. Solid uses single colors, Blended mixes nearby colors for smoother transitions." />
           </div>
           <select
@@ -149,8 +183,8 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         </div>
 
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <h3 className="text-base font-bold" style={{ color: 'black', fontSize: '20px' }}>Color Palette</h3>
+          <div style={TITLE_ROW_STYLE}>
+            <h3 className="text-base font-bold" style={SECTION_TITLE_STYLE}>Color Palette</h3>
             <Tooltip text="In-Game uses the Tomodachi colors. Custom uses any colors from your image." />
           </div>
           <select
@@ -168,10 +202,9 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
       {/* Detail Level and Max Colors */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(250px, 100%), 1fr))', gap: 'clamp(1rem, 3vw, 2rem)' }}>
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <h3 className="text-base font-bold" style={{ color: 'black', fontSize: '20px' }}>
-              Block Size: <span style={{ color: 'black' }}>x{DETAIL_LEVELS[tempDetailLevel]}</span>
-            </h3>
+          <div style={TITLE_ROW_STYLE}>
+            <h3 className="text-base font-bold" style={SECTION_TITLE_STYLE}>Block Size:</h3>
+            <ValuePill>x{DETAIL_LEVELS[tempDetailLevel]}</ValuePill>
             <Tooltip text="Larger blocks = simpler image. x1 = tiny detailed blocks, x27 = large simple blocks." />
           </div>
           <input
@@ -193,10 +226,9 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         <div>
           {paletteMode === 'colorRange' ? (
             <>
-              <div className="flex items-center gap-2 mb-2">
-                <h3 className="text-base font-bold" style={{ color: 'black', fontSize: '20px' }}>
-                  Max Colors: <span style={{ color: 'black' }}>{tempMaxColors === 256 ? 'Unlimited' : tempMaxColors}</span>
-                </h3>
+              <div style={TITLE_ROW_STYLE}>
+                <h3 className="text-base font-bold" style={SECTION_TITLE_STYLE}>Max Colors:</h3>
+                <ValuePill>{tempMaxColors === 256 ? 'Unlimited' : tempMaxColors}</ValuePill>
                 <Tooltip text="Fewer colors = simpler results. Slide to the right for unlimited colors." />
               </div>
               <input
@@ -216,10 +248,9 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             </>
           ) : (
             <>
-              <div className="flex items-center gap-2 mb-2">
-                <h3 className="text-base font-bold" style={{ color: 'black', fontSize: '20px' }}>
-                  Max Colors: <span style={{ color: 'black' }}>{tempMaxColors === 84 ? 'Unlimited' : tempMaxColors}</span>
-                </h3>
+              <div style={TITLE_ROW_STYLE}>
+                <h3 className="text-base font-bold" style={SECTION_TITLE_STYLE}>Max Colors:</h3>
+                <ValuePill>{tempMaxColors === 84 ? 'Unlimited' : tempMaxColors}</ValuePill>
                 <Tooltip text="Fewer colors = simpler results. Slide to the right for unlimited colors." />
               </div>
               <input

@@ -284,3 +284,10 @@ select {
     grid-template-columns: repeat(2, 1fr) !important;
   }
 }
+
+/* Very small mobile: 1 card per row to avoid overflow */
+@media (max-width: 360px) {
+  .canvas-selector-grid {
+    grid-template-columns: 1fr !important;
+  }
+}

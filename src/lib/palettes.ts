@@ -26,7 +26,7 @@ export const CANVAS_SIZES = {
 
   // Clothing - Tops
   'Basic tee': { width: 256, height: 256 },
-  'Tank top': { width: 256, height: 256 },
+  'Tank top': { width: 254, height: 158 },
   'Short-sleeve tee': { width: 256, height: 256 },
   'Long-sleeve tee': { width: 256, height: 256 },
 
@@ -65,8 +65,8 @@ export const CANVAS_SIZES = {
   'Conical roof': { width: 256, height: 256 },
   'Domed roof': { width: 256, height: 256 },
   'Box': { width: 256, height: 130 },
-  'Cylinder': { width: 256, height: 256 },
-  'Cone': { width: 256, height: 256 },
+  'Cylinder': { width: 256, height: 203 },
+  'Cone': { width: 256, height: 141 },
   'Pyramid': { width: 256, height: 256 },
   'Octahedron': { width: 256, height: 256 },
   'Upright board': { width: 256, height: 256 },
@@ -92,24 +92,12 @@ export const CANVAS_CATEGORIES = {
     name: 'Clothing',
     icon: 'Shirt',
     color: '#FF69B4',
-    subcategories: {
-      Tops: {
-        name: 'Tops',
-        items: ['Basic tee', 'Tank top', 'Short-sleeve tee', 'Long-sleeve tee'] as CanvasSizeKey[],
-      },
-      Dresses: {
-        name: 'Dresses',
-        items: ['Sleeveless dress', 'Short-sleeve dress', 'Long-sleeve dress', 'Robe', 'Dress'] as CanvasSizeKey[],
-      },
-      Bottoms: {
-        name: 'Bottoms',
-        items: ['Skirt', 'Long Skirt', 'Shorts', 'Pants'] as CanvasSizeKey[],
-      },
-      Headwear: {
-        name: 'Headwear',
-        items: ['Cap', 'Headwear', 'Top hat'] as CanvasSizeKey[],
-      },
-    },
+    items: [
+      'Basic tee', 'Tank top', 'Short-sleeve tee', 'Long-sleeve tee',
+      'Sleeveless dress', 'Short-sleeve dress', 'Long-sleeve dress', 'Robe', 'Dress',
+      'Skirt', 'Long Skirt', 'Shorts', 'Pants',
+      'Cap', 'Headwear', 'Top hat',
+    ] as CanvasSizeKey[],
   },
   Treasures: {
     name: 'Treasures',
