@@ -1,21 +1,28 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { CANVAS_SIZES, CanvasSizeKey } from '../lib/palettes';
-import { Tooltip } from './Tooltip';
 
 interface CanvasPreviewProps {
   sourceImageData: ImageData;
   canvasSize: CanvasSizeKey;
-  positionX: number;
-  positionY: number;
+  framingMode: 'fit' | 'fill';
+  onFramingModeChange: (mode: 'fit' | 'fill') => void;
+  cropX: number;
+  cropY: number;
+  cropWidth: number;
+  cropHeight: number;
   onCropChange: (x: number, y: number, width: number, height: number) => void;
 }
 
 export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
   sourceImageData,
   canvasSize,
-  positionX,
-  positionY,
+  framingMode,
+  onFramingModeChange,
+  cropX,
+  cropY,
+  cropWidth,
+  cropHeight,
   onCropChange,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -107,8 +114,57 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
     });
   }, [sourceImageData, zoomPercent, baseScale, viewportWidth, viewportHeight, viewportCenterX, viewportCenterY, contentBounds.width, contentBounds.height]);
 
-  // Store the capture values in state
+  // Store crop values in source-image coordinates.
   const [captureValues, setCaptureValues] = useState({ x: 0, y: 0, width: 0, height: 0 });
+
+  // Keep preview viewport synchronized with externally applied crop values.
+  useEffect(() => {
+    if (cropWidth <= 0 || cropHeight <= 0) return;
+    const currentZoom = (zoomPercent / 100) * baseScale;
+    const drawX = panX - (contentBounds.x * currentZoom);
+    const drawY = panY - (contentBounds.y * currentZoom);
+    const currentCropX = -drawX / currentZoom;
+    const currentCropY = -drawY / currentZoom;
+    const currentCropW = viewportWidth / currentZoom;
+    const currentCropH = viewportHeight / currentZoom;
+
+    const epsilon = 0.5;
+    const isAlreadySynced =
+      Math.abs(currentCropX - cropX) < epsilon &&
+      Math.abs(currentCropY - cropY) < epsilon &&
+      Math.abs(currentCropW - cropWidth) < epsilon &&
+      Math.abs(currentCropH - cropHeight) < epsilon;
+
+    if (isAlreadySynced) return;
+
+    const zoomFromWidth = viewportWidth / cropWidth;
+    const zoomFromHeight = viewportHeight / cropHeight;
+    const targetZoom = (zoomFromWidth + zoomFromHeight) / 2;
+    if (!Number.isFinite(targetZoom) || targetZoom <= 0) return;
+
+    const targetZoomPercent = Math.max(10, Math.min(1000, Math.round((targetZoom / baseScale) * 100)));
+    const resolvedZoom = (targetZoomPercent / 100) * baseScale;
+    const targetPanX = (contentBounds.x - cropX) * resolvedZoom;
+    const targetPanY = (contentBounds.y - cropY) * resolvedZoom;
+
+    setZoomPercent(targetZoomPercent);
+    setPanX(targetPanX);
+    setPanY(targetPanY);
+
+    // Keep zoom-centered interactions stable after syncing from parent.
+    setViewportCenterX((viewportWidth / 2 - targetPanX) / resolvedZoom);
+    setViewportCenterY((viewportHeight / 2 - targetPanY) / resolvedZoom);
+  }, [
+    cropX,
+    cropY,
+    cropWidth,
+    cropHeight,
+    viewportWidth,
+    viewportHeight,
+    baseScale,
+    contentBounds.x,
+    contentBounds.y,
+  ]);
 
   // Draw the preview - this is exactly what will be converted
   useEffect(() => {
@@ -147,13 +203,13 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
       ctx.drawImage(tempCanvas, panX - (contentBounds.x * zoom), panY - (contentBounds.y * zoom), sourceImageData.width * zoom, sourceImageData.height * zoom);
     }
 
-    // Convert the current placement into target-canvas coordinates.
-    const scaleX = targetSize.width / viewportWidth;
-    const scaleY = targetSize.height / viewportHeight;
-    const captureX = (panX - (contentBounds.x * zoom)) * scaleX;
-    const captureY = (panY - (contentBounds.y * zoom)) * scaleY;
-    const captureWidth = sourceImageData.width * zoom * scaleX;
-    const captureHeight = sourceImageData.height * zoom * scaleY;
+    // Convert the current placement into a source crop rectangle.
+    const drawX = panX - (contentBounds.x * zoom);
+    const drawY = panY - (contentBounds.y * zoom);
+    const captureX = -drawX / zoom;
+    const captureY = -drawY / zoom;
+    const captureWidth = viewportWidth / zoom;
+    const captureHeight = viewportHeight / zoom;
 
     setCaptureValues({ x: captureX, y: captureY, width: captureWidth, height: captureHeight });
   }, [sourceImageData, zoomPercent, panX, panY, viewportWidth, viewportHeight, baseScale, contentBounds.x, contentBounds.y, contentBounds.width, contentBounds.height]);
@@ -161,7 +217,12 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
   // Notify parent only when capture values actually change - with debounce
   useEffect(() => {
     const timeout = setTimeout(() => {
-      onCropChange(captureValues.x, captureValues.y, captureValues.width, captureValues.height);
+      onCropChange(
+        captureValues.x,
+        captureValues.y,
+        captureValues.width,
+        captureValues.height
+      );
     }, 300);
 
     return () => clearTimeout(timeout);
@@ -336,33 +397,24 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
         className="w-full cursor-move bg-input"
         style={{ maxWidth: '512px', height: 'auto', touchAction: 'none' }}
       />
-      <div className="text-center text-sm font-medium" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '3.25rem', flexWrap: 'nowrap', justifyContent: 'center', color: '#000000', whiteSpace: 'nowrap' }}>
-        <span style={{ fontWeight: 400, color: '#000000' }}>Position:</span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 400, color: '#000000' }}>
-          <span style={{ fontWeight: 400, color: '#000000' }}>x:</span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '2px 8px', borderRadius: '9999px', backgroundColor: '#FFF3CC', color: '#000000', fontSize: 'inherit', fontWeight: 400, lineHeight: 1, whiteSpace: 'nowrap' }}>
-            {Math.round(positionX)}
-          </span>
-        </span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 400, color: '#000000' }}>
-          <span style={{ fontWeight: 400, color: '#000000' }}>y:</span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '2px 8px', borderRadius: '9999px', backgroundColor: '#FFF3CC', color: '#000000', fontSize: 'inherit', fontWeight: 400, lineHeight: 1, whiteSpace: 'nowrap' }}>
-            {Math.round(positionY)}
-          </span>
-        </span>
-        <Tooltip text="These values show where the image is positioned on the converted canvas. Use them to place the image in the same spot again." />
+      <div style={{ display: 'flex', gap: '8px', marginTop: '12px', width: '100%' }}>
+        {(['fit', 'fill'] as const).map((mode) => (
+          <button
+            key={mode}
+            onClick={() => onFramingModeChange(mode)}
+            className={`flex-1 px-4 py-2 rounded-2xl font-medium text-[16px] btn-tool${framingMode === mode ? ' btn-tool--active' : ''}`}
+            style={{ border: 'none', cursor: 'pointer' }}
+          >
+            {mode === 'fit' ? 'Fit' : 'Fill'}
+          </button>
+        ))}
       </div>
       <div className="flex gap-2 items-center" style={{ justifyContent: 'center', marginTop: '2rem', width: '100%' }}>
         <button
           onClick={() => handleZoomChange(zoomPercent - 10)}
           title="Zoom out"
-          className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 font-bold"
-          style={{
-            color: '#2b2b2b',
-            flexShrink: 0
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = '#FF8000')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = '#2b2b2b')}
+          className="px-3 py-2 rounded-lg flex items-center justify-center gap-2 font-bold btn-icon"
+          style={{ flexShrink: 0 }}
         >
           <ZoomOut strokeWidth={3} className="w-5 h-5" />
         </button>
@@ -395,13 +447,8 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
         <button
           onClick={() => handleZoomChange(zoomPercent + 10)}
           title="Zoom in"
-          className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 font-bold"
-          style={{
-            color: '#2b2b2b',
-            flexShrink: 0
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = '#FF8000')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = '#2b2b2b')}
+          className="px-3 py-2 rounded-lg flex items-center justify-center gap-2 font-bold btn-icon"
+          style={{ flexShrink: 0 }}
         >
           <ZoomIn strokeWidth={3} className="w-5 h-5" />
         </button>
@@ -414,18 +461,13 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
             setPanY(0);
           }}
           title="Reset zoom and position"
-          className="px-4 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
-          style={{
-            color: '#2b2b2b',
-            flexShrink: 0
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = '#FF8000')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = '#2b2b2b')}
+          className="px-4 py-2 rounded-lg flex items-center gap-2 font-bold btn-icon"
+          style={{ flexShrink: 0 }}
         >
           <RotateCcw strokeWidth={3} className="w-5 h-5" />
         </button>
       </div>
-      <div className="text-center text-sm font-medium" style={{ marginTop: '1rem', color: '#000000' }}>
+      <div className="text-center text-sm font-medium" style={{ marginTop: '1rem', color: 'var(--app-text)' }}>
         Zoom: {zoomPercent}%
       </div>
     </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CANVAS_CATEGORIES, CANVAS_SIZES, CanvasSizeKey, CANVAS_SIZES_WITH_MASKS } from '../lib/palettes';
 import * as LucideIcons from 'lucide-react';
+import { TYPOGRAPHY } from '../lib/typography';
 
 interface CanvasSelectorProps {
   selectedCanvasSize: CanvasSizeKey;
@@ -86,20 +87,18 @@ const renderMaskWithColor = async (maskPath: string, color: string): Promise<str
 
 // Shared card styling
 const CARD_STYLE = {
-  backgroundColor: 'white',
   border: 'none',
   borderRadius: '12px',
-  boxShadow: '0 6px 0 #eeedef',
   boxSizing: 'border-box' as const,
   width: '100%',
   minWidth: 0,
+  minHeight: '144px',
   display: 'flex',
   flexDirection: 'column' as const,
   alignItems: 'center',
-  justifyContent: 'flex-start',
-  padding: 'clamp(0.75rem, 2.5vw, 2rem)',
+  justifyContent: 'stretch',
+  padding: '8px',
   cursor: 'pointer',
-  transition: 'all 0.2s',
 };
 
 export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
@@ -158,16 +157,13 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
   };
 
   // Determine which dimension should be constrained to fit in 60x60 box
-  const getShapeStyle = (size: CanvasSizeKey) => {
+  const getShapeStyle = (size: CanvasSizeKey): React.CSSProperties => {
     const canvas = CANVAS_SIZES[size];
     const aspectRatio = canvas.width / canvas.height;
-    
-    // If wider than tall (landscape or square), constrain width
-    // If taller than wide (portrait), constrain height
     if (aspectRatio >= 1) {
-      return { width: '60px', height: 'auto' };
+      return { width: '100%', height: 'auto', maxWidth: '72px' };
     } else {
-      return { width: 'auto', height: '60px' };
+      return { width: 'auto', height: '100%', maxHeight: '72px' };
     }
   };
 
@@ -183,7 +179,7 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
     categoryColor: string;
     hasMask: boolean;
     aspectRatio: string;
-    shapeStyle: Record<string, string>;
+    shapeStyle: React.CSSProperties;
   }> = ({ size, isSelected, categoryColor, hasMask: isMasked, aspectRatio, shapeStyle }) => {
     const [maskImage, setMaskImage] = useState<string>('');
 
@@ -204,8 +200,10 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
           src={maskImage}
           alt={size}
           style={{
-            width: '60px',
-            height: '60px',
+            width: '100%',
+            height: '100%',
+            maxWidth: '72px',
+            maxHeight: '72px',
             objectFit: 'contain',
             opacity: isSelected ? 1 : 0.3,
           }}
@@ -227,49 +225,34 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Categories Section */}
       <div>
-        <h3 className="text-base font-bold" style={{ color: 'black', marginBottom: '12px', fontSize: 'clamp(1rem, 4.8vw, 20px)' }}>
+        <h3 className={TYPOGRAPHY.h3} style={{ color: 'var(--app-text)', marginBottom: '8px' }}>
           Categories
         </h3>
-        <div className="canvas-selector-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 'clamp(1rem, 3vw, 2rem)', maxWidth: '100%' }}>
+        <div className="grid grid-cols-3 gap-2">
           {Object.entries(CANVAS_CATEGORIES).map(([key, category]) => (
             <button
               key={key}
               onClick={() => handleCategorySelect(key as CategoryKey)}
-              style={{
-                ...CARD_STYLE,
-                gap: '8px',
-                backgroundColor: selectedCategory === key ? '#FFDA85' : 'white',
-                boxShadow: selectedCategory === key ? '0 6px 0 #FFC336' : '0 6px 0 #eeedef',
-                transform: 'scale(1)',
-              } as React.CSSProperties}
-              onMouseEnter={(e) => {
-                if (selectedCategory !== key) {
-                  (e.currentTarget as HTMLElement).style.transform = 'scale(1.05)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.transform = 'scale(1)';
-              }}
+              className={`btn-card${selectedCategory === key ? ' btn-card--selected' : ''}`}
+              style={{ ...CARD_STYLE, gap: '8px' } as React.CSSProperties}
               title={`Select ${category.name}`}
             >
-              {/* Category icon */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div className="flex h-full w-full flex-1 items-center justify-center">
                 {React.createElement((LucideIcons as any)[(category as any).icon], {
-                  size: 60,
+                  size: 38,
                   strokeWidth: 2,
                   color: getCategoryGroupColor(key as CategoryKey),
-                  style: {
-                    width: 'clamp(36px, 10vw, 60px)',
-                    height: 'clamp(36px, 10vw, 60px)',
-                  },
                 })}
               </div>
-              <h4 style={{ color: 'black', fontWeight: 'bold', margin: '0', fontSize: 'clamp(12px, 3.6vw, 16px)', textAlign: 'center' }}>
+              <h3 className={TYPOGRAPHY.h3} style={{ color: 'var(--app-text)', margin: 0, textAlign: 'center' }}>
                 {category.name}
-              </h4>
+              </h3>
+              <p className={TYPOGRAPHY.caption} style={{ color: 'var(--app-text-sub)', margin: 0, textAlign: 'center' }}>
+                {category.items.length} items
+              </p>
             </button>
           ))}
         </div>
@@ -277,44 +260,19 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
 
       {/* Base Shapes Section */}
       <div>
-        <h3 className="text-base font-bold" style={{ color: 'black', marginBottom: '12px', fontSize: 'clamp(1rem, 4.8vw, 20px)' }}>
-          Base shapes
+        <h3 className={TYPOGRAPHY.h3} style={{ color: 'var(--app-text)', marginBottom: '8px' }}>
+          Shapes
         </h3>
-        <div className="canvas-selector-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 'clamp(1rem, 3vw, 2rem)', maxWidth: '100%' }}>
+        <div className="grid grid-cols-3 gap-2">
           {itemsToDisplay.map((size) => (
             <button
               key={size}
               onClick={() => handleCanvasSelect(size)}
-              style={{
-                ...CARD_STYLE,
-                gap: '8px',
-                backgroundColor: selectedCanvasSize === size ? '#FFDA85' : 'white',
-                boxShadow: selectedCanvasSize === size ? '0 6px 0 #FFC336' : '0 6px 0 #eeedef',
-                border: 'none',
-                transform: 'scale(1)',
-              } as React.CSSProperties}
-              onMouseEnter={(e) => {
-                if (selectedCanvasSize !== size) {
-                  (e.currentTarget as HTMLElement).style.transform = 'scale(1.05)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.transform = 'scale(1)';
-              }}
+              className={`btn-card${selectedCanvasSize === size ? ' btn-card--selected' : ''}`}
+              style={{ ...CARD_STYLE, gap: '8px' } as React.CSSProperties}
               title={`Select ${size}`}
             >
-              {/* Fixed-size square container for the shape */}
-              <div
-                style={{
-                  width: 'clamp(52px, 16vw, 80px)',
-                  height: 'clamp(52px, 16vw, 80px)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}
-              >
-                {/* Shape with canvas aspect ratio - maintains aspect while fitting in box */}
+              <div className="flex w-full flex-1 items-center justify-center min-h-0">
                 <ShapePreview 
                   size={size}
                   isSelected={selectedCanvasSize === size}
@@ -324,17 +282,11 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
                   shapeStyle={getShapeStyle(size)}
                 />
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', textAlign: 'center', width: '100%' }}>
-                <h4 style={{ color: 'black', fontWeight: 'bold', margin: '0', fontSize: 'clamp(11px, 3.2vw, 13px)' }}>
+              <div className="flex w-full flex-col items-center gap-1 text-center">
+                <h3 className={TYPOGRAPHY.h3} style={{ color: 'var(--app-text)', margin: 0 }}>
                   {size}
-                </h4>
-                <p
-                  style={{
-                    color: '#717182',
-                    margin: '0',
-                    fontSize: 'clamp(11px, 3.2vw, 14px)',
-                  }}
-                >
+                </h3>
+                <p className={TYPOGRAPHY.caption} style={{ color: 'var(--app-text-sub)', margin: 0 }}>
                   {CANVAS_SIZES[size].width}×{CANVAS_SIZES[size].height}px
                 </p>
               </div>

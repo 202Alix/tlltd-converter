@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Upload, ChevronLeft } from 'lucide-react';
+import { Upload, ChevronLeft, ChevronDown, Moon, Sun } from 'lucide-react';
 import LogoUrl from './assets/Logo_ResizeMee.svg';
 import { ImageUpload } from './components/ImageUpload';
 import { ControlPanel } from './components/ControlPanel';
@@ -13,32 +13,90 @@ import { Contact } from './pages/Contact';
 import { processImage } from './lib/imageProcessor';
 import { CANVAS_SIZES, PALETTES, CanvasSizeKey } from './lib/palettes';
 import { QuantizationMethod } from './lib/quantizer';
-import { DetailLevel } from './lib/imageProcessor';
-import { Tooltip } from './components/Tooltip';
+import { BrushMode, DetailLevel, getDetailLevelsForBrushMode } from './lib/imageProcessor';
+import { TYPOGRAPHY } from './lib/typography';
 
 type PageType = 'app' | 'privacy' | 'terms' | 'license' | 'contact';
 
-const SECTION_DIVIDER = '1px solid #eeedef';
-const PANEL_PADDING = '1.25rem 1.5rem';
+const computeFramingCrop = (
+  mode: 'fit' | 'fill',
+  srcWidth: number,
+  srcHeight: number,
+  canvasSize: CanvasSizeKey
+): { x: number; y: number; width: number; height: number } => {
+  const target = CANVAS_SIZES[canvasSize];
+  const scale = mode === 'fill'
+    ? Math.max(target.width / srcWidth, target.height / srcHeight)
+    : Math.min(target.width / srcWidth, target.height / srcHeight);
+  const sw = target.width / scale;
+  const sh = target.height / scale;
+  return { x: (srcWidth - sw) / 2, y: (srcHeight - sh) / 2, width: sw, height: sh };
+};
 
-const PanelSection: React.FC<{
+const PANEL_PADDING = '0.875rem 1rem';
+
+const CardSection: React.FC<{
   title: string;
   titleExtra?: React.ReactNode;
   children: React.ReactNode;
-  noDivider?: boolean;
-}> = ({ title, titleExtra, children, noDivider }) => (
-  <div style={{ borderBottom: noDivider ? 'none' : SECTION_DIVIDER }}>
-    <div style={{ padding: PANEL_PADDING, paddingBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-      <h2 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: 'black', letterSpacing: '-0.01em' }}>
-        {title}
-      </h2>
-      {titleExtra}
+  collapsible?: boolean;
+  defaultOpen?: boolean;
+}> = ({ title, titleExtra, children, collapsible = true, defaultOpen = true }) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <div style={{ backgroundColor: 'var(--app-panel-bg)', borderRadius: '14px', boxShadow: '0 var(--app-shadow-offset) 0 var(--app-divider)' }}>
+      <div
+        style={{
+          padding: PANEL_PADDING,
+          paddingBottom: isOpen ? '0.5rem' : PANEL_PADDING.split(' ')[0],
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '8px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+          {collapsible && (
+            <button
+              onClick={() => setIsOpen(prev => !prev)}
+              aria-label={isOpen ? `Collapse ${title}` : `Expand ${title}`}
+              aria-expanded={isOpen}
+              className="p-1 rounded-md transition-colors"
+              style={{
+                backgroundColor: 'var(--app-panel-alt)',
+                border: 'none',
+                color: 'var(--app-text-sub)',
+                flexShrink: 0,
+                cursor: 'pointer',
+              }}
+            >
+              <ChevronDown
+                size={16}
+                strokeWidth={3}
+                style={{ transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.15s ease' }}
+              />
+            </button>
+          )}
+          <h2 className={TYPOGRAPHY.h2} style={{ margin: 0, color: 'var(--app-text)', letterSpacing: '-0.01em', fontSize: '1.05rem', lineHeight: 1.2 }}>
+            {title}
+          </h2>
+          {titleExtra}
+        </div>
+      </div>
+      <div
+        aria-hidden={collapsible && !isOpen}
+        style={{
+          display: collapsible && !isOpen ? 'none' : 'block',
+          padding: PANEL_PADDING,
+          paddingTop: '0.5rem',
+        }}
+      >
+        {children}
+      </div>
     </div>
-    <div style={{ padding: PANEL_PADDING, paddingTop: '0.75rem' }}>
-      {children}
-    </div>
-  </div>
-);
+  );
+};
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<PageType>('app');
@@ -49,11 +107,40 @@ export default function App() {
   const [convertedImageData, setConvertedImageData] = useState<ImageData | null>(null);
   const [showGrid, setShowGrid] = useState(false);
   const [cropParams, setCropParams] = useState({ x: 0, y: 0, width: 306, height: 306 });
+  const [framingMode, setFramingMode] = useState<'fit' | 'fill'>('fit');
   const [paletteMode, setPaletteMode] = useState<'default' | 'colorRange'>('default');
-  const [maxColors, setMaxColors] = useState<number | null>(null);
+  const [maxColors, setMaxColors] = useState<number>(84);
+  const [brushMode, setBrushMode] = useState<BrushMode>('smooth');
   const [detailLevel, setDetailLevel] = useState<DetailLevel>(1);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem('tomodachi-dark-mode');
+    if (saved !== null) return saved === 'true';
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+  });
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDarkMode);
+    localStorage.setItem('tomodachi-dark-mode', String(isDarkMode));
+  }, [isDarkMode]);
 
   const detailDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const normalizeQuantizationMethod = useCallback((value: unknown): QuantizationMethod => {
+    if (value === 'nearest-color' || value === 'dithering' || value === 'posterize') {
+      return value;
+    }
+    if (value === 'text-friendly') {
+      return 'posterize';
+    }
+    return 'nearest-color';
+  }, []);
+
+  const resolveDetailForMode = useCallback((mode: BrushMode, detail: DetailLevel): DetailLevel => {
+    const allowed = getDetailLevelsForBrushMode(mode);
+    if (allowed.includes(detail)) return detail;
+    return allowed[0];
+  }, []);
 
   const handleDetailLevelChange = useCallback((level: DetailLevel) => {
     setDetailLevel(level);
@@ -68,7 +155,10 @@ export default function App() {
   const handleImageLoaded = (imageData: ImageData, originalSize: { width: number; height: number }) => {
     setSourceImageData(imageData);
     setOriginalImageSize(originalSize);
-    processConversion(imageData, selectedCanvasSize, quantizationMethod, 0, 0, originalSize.width, originalSize.height, detailLevel);
+    setFramingMode('fit');
+    const crop = computeFramingCrop('fit', imageData.width, imageData.height, selectedCanvasSize);
+    setCropParams(crop);
+    processConversion(imageData, selectedCanvasSize, quantizationMethod, crop.x, crop.y, crop.width, crop.height, detailLevel);
   };
 
   const processConversion = async (
@@ -82,6 +172,7 @@ export default function App() {
     detail: DetailLevel
   ) => {
     const canvasSpec = CANVAS_SIZES[canvasSize];
+    setIsProcessing(true);
     try {
       const result = await processImage(source, {
         width: canvasSpec.width,
@@ -101,14 +192,26 @@ export default function App() {
     } catch (error) {
       console.error('Error processing image:', error);
       alert('Error processing image');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const handleCanvasSizeChange = (size: CanvasSizeKey) => {
     setSelectedCanvasSize(size);
     if (sourceImageData) {
-      processConversion(sourceImageData, size, quantizationMethod, cropParams.x, cropParams.y, cropParams.width, cropParams.height, detailLevel);
+      const crop = computeFramingCrop(framingMode, sourceImageData.width, sourceImageData.height, size);
+      setCropParams(crop);
+      processConversion(sourceImageData, size, quantizationMethod, crop.x, crop.y, crop.width, crop.height, detailLevel);
     }
+  };
+
+  const handleFraming = (mode: 'fit' | 'fill') => {
+    setFramingMode(mode);
+    if (!sourceImageData) return;
+    const crop = computeFramingCrop(mode, sourceImageData.width, sourceImageData.height, selectedCanvasSize);
+    setCropParams(crop);
+    processConversion(sourceImageData, selectedCanvasSize, quantizationMethod, crop.x, crop.y, crop.width, crop.height, detailLevel);
   };
 
   const handleQuantizationMethodChange = (method: QuantizationMethod) => {
@@ -125,10 +228,30 @@ export default function App() {
     }
   };
 
-  const handleMaxColorsChange = (count: number | null) => {
+  const handleMaxColorsChange = (count: number) => {
     setMaxColors(count);
     if (sourceImageData) {
       processConversionWithPaletteMode(sourceImageData, selectedCanvasSize, quantizationMethod, cropParams.x, cropParams.y, cropParams.width, cropParams.height, detailLevel, paletteMode, count);
+    }
+  };
+
+  const handleBrushModeChange = (mode: BrushMode) => {
+    setBrushMode(mode);
+    const nextDetail = resolveDetailForMode(mode, detailLevel);
+    if (nextDetail !== detailLevel) {
+      setDetailLevel(nextDetail);
+    }
+    if (sourceImageData) {
+      processConversion(
+        sourceImageData,
+        selectedCanvasSize,
+        quantizationMethod,
+        cropParams.x,
+        cropParams.y,
+        cropParams.width,
+        cropParams.height,
+        nextDetail
+      );
     }
   };
 
@@ -143,9 +266,10 @@ export default function App() {
     cropHeight: number,
     detail: DetailLevel,
     palMode: 'default' | 'colorRange',
-    colors: number | null
+    colors: number
   ) => {
     const canvasSpec = CANVAS_SIZES[canvasSize];
+    setIsProcessing(true);
     try {
       const result = await processImage(source, {
         width: canvasSpec.width,
@@ -164,6 +288,21 @@ export default function App() {
       setConvertedImageData(result);
     } catch (error) {
       console.error('Error processing image:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handlePresetApply = (mode: BrushMode, detail: DetailLevel, colors: number) => {
+    setBrushMode(mode);
+    setDetailLevel(detail);
+    setMaxColors(colors);
+    if (sourceImageData) {
+      processConversionWithPaletteMode(
+        sourceImageData, selectedCanvasSize, quantizationMethod,
+        cropParams.x, cropParams.y, cropParams.width, cropParams.height,
+        detail, paletteMode, colors
+      );
     }
   };
 
@@ -214,7 +353,8 @@ export default function App() {
           quantizationMethod,
           paletteMode,
           maxColors,
-          cropParams,
+          brushMode,
+          framingMode,
           originalImageSize,
           detailLevel,
         };
@@ -223,7 +363,7 @@ export default function App() {
         console.error('Failed to save to localStorage:', error);
       }
     }
-  }, [sourceImageData, selectedCanvasSize, quantizationMethod, paletteMode, maxColors, cropParams, originalImageSize, detailLevel]);
+  }, [sourceImageData, selectedCanvasSize, quantizationMethod, paletteMode, maxColors, brushMode, framingMode, originalImageSize, detailLevel]);
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -252,15 +392,29 @@ export default function App() {
               setSourceImageData(imageData);
               setOriginalImageSize(state.originalImageSize);
               setSelectedCanvasSize(migratedCanvasSize as CanvasSizeKey);
-              setQuantizationMethod(state.quantizationMethod || 'nearest-color');
+              const normalizedMethod = normalizeQuantizationMethod(state.quantizationMethod);
+              setQuantizationMethod(normalizedMethod);
               setPaletteMode(state.paletteMode || 'default');
-              setMaxColors(state.maxColors || null);
-              setCropParams(state.cropParams || { x: 0, y: 0, width: 306, height: 306 });
-              setDetailLevel(state.detailLevel || 1);
+              const loadedBrushMode = (state.brushMode === 'pixel-perfect' ? 'pixel-perfect' : 'smooth') as BrushMode;
+              setBrushMode(loadedBrushMode);
+              const loadedPaletteMode = (state.paletteMode || 'default') as 'default' | 'colorRange';
+              const loadedMaxLimit = loadedPaletteMode === 'colorRange' ? 128 : 84;
+              const loadedMaxColors =
+                typeof state.maxColors === 'number' && state.maxColors > 0
+                  ? Math.min(state.maxColors, loadedMaxLimit)
+                  : loadedMaxLimit;
+
+              setMaxColors(loadedMaxColors);
+              const loadedFramingMode = (state.framingMode === 'fill' ? 'fill' : 'fit') as 'fit' | 'fill';
+              setFramingMode(loadedFramingMode);
+              const loadedDetail = (state.detailLevel || 1) as DetailLevel;
+              const migratedDetail = resolveDetailForMode(loadedBrushMode, loadedDetail);
+              setDetailLevel(migratedDetail);
 
               const canvasSize = migratedCanvasSize as CanvasSizeKey;
-              const method = (state.quantizationMethod || 'nearest-color') as QuantizationMethod;
-              const crop = state.cropParams || { x: 0, y: 0, width: 306, height: 306 };
+              const method = normalizeQuantizationMethod(state.quantizationMethod);
+              const crop = computeFramingCrop(loadedFramingMode, imageData.width, imageData.height, canvasSize);
+              setCropParams(crop);
               const canvasSpec = CANVAS_SIZES[canvasSize];
               if (canvasSpec) {
                 try {
@@ -270,12 +424,12 @@ export default function App() {
                     paletteColors: PALETTES.palette1.colors,
                     quantizationMethod: method,
                     paletteMode: state.paletteMode || 'default',
-                    maxColors: state.maxColors || null,
+                    maxColors: loadedMaxColors,
                     sourceX: Math.round(crop.x),
                     sourceY: Math.round(crop.y),
                     sourceWidth: Math.round(crop.width),
                     sourceHeight: Math.round(crop.height),
-                    detailLevel: state.detailLevel || 1,
+                    detailLevel: migratedDetail,
                     canvasSize: canvasSize,
                   });
                   setConvertedImageData(result);
@@ -292,7 +446,7 @@ export default function App() {
     };
 
     loadSavedState();
-  }, []);
+  }, [resolveDetailForMode, normalizeQuantizationMethod]);
 
   const resetApp = () => {
     setSourceImageData(null);
@@ -333,12 +487,12 @@ export default function App() {
 
   // ── Main app ─────────────────────────────────────────────────────────────────
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden', backgroundColor: 'white' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden', gap: '1rem' }}>
 
       {/* Header */}
       <header
-        className="w-full bg-white shrink-0"
-        style={{ boxShadow: '0 3px 0 #FFC336', zIndex: 10 }}
+        className="w-full shrink-0"
+        style={{ backgroundColor: 'var(--app-panel-bg)', boxShadow: '0 2px 0 var(--app-accent)', zIndex: 10 }}
       >
         <div style={{
           paddingLeft: 'clamp(12px, 3vw, 24px)',
@@ -352,22 +506,32 @@ export default function App() {
         }}>
           <div className="flex items-center gap-2" style={{ minWidth: 0 }}>
             <img src={LogoUrl} alt="Logo" style={{ height: '36px', width: 'auto', borderRadius: '6px', flexShrink: 0 }} />
-            <h1 className="text-xl font-black" style={{ color: 'black', lineHeight: '1.2', whiteSpace: 'nowrap' }}>
+            <h1 className={TYPOGRAPHY.h1} style={{ color: 'var(--app-text)', whiteSpace: 'nowrap' }}>
               ResizeMee
             </h1>
           </div>
 
-          {sourceImageData && (
+          <div className="flex items-center gap-2" style={{ flexShrink: 0 }}>
             <button
-              onClick={resetApp}
-              className="px-4 py-2 rounded-full transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold text-sm whitespace-nowrap"
-              style={{ border: '2px solid #FF8000', backgroundColor: 'transparent', color: '#FF8000', flexShrink: 0 }}
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              className="p-2 rounded-full btn-lift"
+              style={{ backgroundColor: 'transparent', border: 'none', color: '#FF8000', cursor: 'pointer' }}
             >
-              <Upload strokeWidth={3} className="w-4 h-4" />
-              <span className="hidden sm:inline">Upload new image</span>
-              <span className="sm:hidden">New image</span>
+              {isDarkMode ? <Sun size={20} strokeWidth={3} /> : <Moon size={20} strokeWidth={3} />}
             </button>
-          )}
+            {sourceImageData && (
+              <button
+                onClick={resetApp}
+                className="px-4 py-2 rounded-full flex items-center gap-2 font-bold text-sm whitespace-nowrap btn-lift"
+                style={{ border: '2px solid #FF8000', backgroundColor: 'transparent', color: '#FF8000', cursor: 'pointer' }}
+              >
+                <Upload strokeWidth={3} className="w-4 h-4" />
+                <span className="hidden sm:inline">Upload new image</span>
+                <span className="sm:hidden">New image</span>
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -377,14 +541,14 @@ export default function App() {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'clamp(1.5rem, 5vw, 3rem)' }}>
           <div style={{ maxWidth: '560px', width: '100%', display: 'flex', flexDirection: 'column', gap: '1.5rem', alignItems: 'center', textAlign: 'center' }}>
             <div>
-              <h2 className="font-black" style={{ fontSize: 'clamp(1.4rem, 4vw, 2rem)', color: 'black', marginBottom: '0.5rem', lineHeight: 1.2 }}>
+              <h2 className={TYPOGRAPHY.h2} style={{ color: 'var(--app-text)', marginBottom: '0.5rem' }}>
                 Convert any image into a Tomodachi Life asset
               </h2>
-              <p style={{ fontSize: '15px', color: '#717182', lineHeight: 1.6 }}>
+              <p className={TYPOGRAPHY.body} style={{ color: 'var(--app-text-sub)' }}>
                 Pick the exact in-game shape, tune the palette and detail level, then download a PNG ready to paint.
               </p>
             </div>
-            <div style={{ width: '100%', backgroundColor: 'white', boxShadow: '0 6px 0 #FFC336', borderRadius: '24px', padding: '1.5rem' }}>
+            <div style={{ width: '100%', backgroundColor: 'var(--app-panel-bg)', boxShadow: '0 var(--app-shadow-offset) 0 var(--app-accent)', borderRadius: '24px', padding: '1.5rem' }}>
               <ImageUpload onImageLoaded={handleImageLoaded} />
             </div>
           </div>
@@ -392,44 +556,38 @@ export default function App() {
 
       ) : (
         // ── Editor layout ──────────────────────────────────────────────────────
-        <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
+        <div className="app-editor-layout" style={{ flex: 1, minHeight: 0 }}>
 
           {/* LEFT PANEL — settings, scrollable */}
-          <aside style={{
-            width: 'clamp(300px, 38%, 460px)',
-            flexShrink: 0,
-            overflowY: 'auto',
-            overflowX: 'hidden',
-            borderRight: '3px solid #FFC336',
-            backgroundColor: 'white',
+          <aside className="app-editor-aside" style={{
             display: 'flex',
             flexDirection: 'column',
+            padding: '1rem',
+            gap: '1rem',
           }}>
 
-            {/* Target Shape */}
-            <PanelSection title="Target Shape">
+            <CardSection title="Canvas">
               <CanvasSelector
                 selectedCanvasSize={selectedCanvasSize}
                 onCanvasSizeChange={handleCanvasSizeChange}
               />
-            </PanelSection>
+            </CardSection>
 
-            {/* Position / Frame source */}
-            <PanelSection
-              title="Position"
-              titleExtra={<Tooltip text="Pan and zoom to frame exactly what gets converted." />}
-            >
+            <CardSection title="Framing">
               <CanvasPreview
                 sourceImageData={sourceImageData}
                 canvasSize={selectedCanvasSize}
-                positionX={cropParams.x}
-                positionY={cropParams.y}
+                framingMode={framingMode}
+                onFramingModeChange={handleFraming}
+                cropX={cropParams.x}
+                cropY={cropParams.y}
+                cropWidth={cropParams.width}
+                cropHeight={cropParams.height}
                 onCropChange={handleCropChange}
               />
-            </PanelSection>
+            </CardSection>
 
-            {/* Image Settings */}
-            <PanelSection title="Image Settings">
+            <CardSection title="Style & Output">
               <ControlPanel
                 selectedCanvasSize={selectedCanvasSize}
                 onCanvasSizeChange={handleCanvasSizeChange}
@@ -437,17 +595,20 @@ export default function App() {
                 onPaletteModeChange={handlePaletteModeChange}
                 maxColors={maxColors}
                 onMaxColorsChange={handleMaxColorsChange}
+                brushMode={brushMode}
+                onBrushModeChange={handleBrushModeChange}
                 quantizationMethod={quantizationMethod}
                 onQuantizationMethodChange={handleQuantizationMethodChange}
                 detailLevel={detailLevel}
                 onDetailLevelChange={handleDetailLevelChange}
+                onPresetApply={handlePresetApply}
                 onPageChange={setCurrentPage}
               />
-            </PanelSection>
+            </CardSection>
 
-            {/* Compact footer */}
-            <div style={{ marginTop: 'auto', padding: '1.25rem 1.5rem', borderTop: SECTION_DIVIDER }}>
-              <p style={{ fontSize: '11px', color: '#a6a6a6', marginBottom: '8px' }}>
+            {/* Footer card */}
+            <div style={{ marginTop: 'auto', backgroundColor: 'var(--app-panel-bg)', borderRadius: '16px', boxShadow: '0 var(--app-shadow-offset-lg) 0 var(--app-divider)', padding: '1rem 1.25rem' }}>
+              <p style={{ fontSize: '11px', color: 'var(--app-text-muted)', marginBottom: '8px' }}>
                 Fan-made · Not affiliated with Nintendo
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px' }}>
@@ -485,28 +646,30 @@ export default function App() {
             </div>
           </aside>
 
-          {/* RIGHT PANEL — result, sticky */}
-          <main style={{
-            flex: 1,
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: '#f7f7f8',
-            padding: 'clamp(1rem, 2.5vw, 1.75rem)',
-          }}>
-            {convertedImageData ? (
-              <ConvertedView
-                convertedImageData={convertedImageData}
-                showGrid={showGrid}
-                onToggleGrid={setShowGrid}
-                canvasSize={selectedCanvasSize}
-                paletteMode={paletteMode}
-              />
-            ) : (
-              <p style={{ color: '#a6a6a6', fontSize: '14px' }}>Processing…</p>
-            )}
+          {/* RIGHT PANEL — result, scrollable */}
+          <main className="app-editor-main">
+            <div style={{
+              minHeight: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'stretch',
+              justifyContent: 'flex-start',
+              padding: '1rem',
+              width: '100%',
+            }}>
+              {convertedImageData ? (
+                <ConvertedView
+                  convertedImageData={convertedImageData}
+                  showGrid={showGrid}
+                  onToggleGrid={setShowGrid}
+                  canvasSize={selectedCanvasSize}
+                  paletteMode={paletteMode}
+                  isProcessing={isProcessing}
+                />
+              ) : (
+                <p style={{ color: '#a6a6a6', fontSize: '14px' }}>Processing…</p>
+              )}
+            </div>
           </main>
 
         </div>

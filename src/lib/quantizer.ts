@@ -1,6 +1,6 @@
 import { hexToRgb, rgbToHex, colorDistance } from './colorUtils';
 
-export type QuantizationMethod = 'nearest-color' | 'dithering';
+export type QuantizationMethod = 'nearest-color' | 'dithering' | 'posterize';
 
 // Nearest color quantization - simple and fast
 export function quantizeNearest(
@@ -122,6 +122,125 @@ export function quantizeDithering(
   return new ImageData(data, width, height);
 }
 
+function clampByte(value: number): number {
+  return Math.max(0, Math.min(255, value));
+}
+
+function posterizeChannel(value: number, levels: number): number {
+  if (levels <= 1) return value;
+  const scaled = value / 255;
+  const step = levels - 1;
+  return Math.round(scaled * step) * (255 / step);
+}
+
+function posterizePreprocess(
+  imageData: ImageData,
+  options?: {
+    levels?: number;
+    smoothColorThreshold?: number;
+    edgeThreshold?: number;
+    contrastBoost?: number;
+  }
+): ImageData {
+  const width = imageData.width;
+  const height = imageData.height;
+  const src = imageData.data;
+  const out = new Uint8ClampedArray(src.length);
+
+  const levels = options?.levels ?? 6;
+  const smoothColorThreshold = options?.smoothColorThreshold ?? 38;
+  const edgeThreshold = options?.edgeThreshold ?? 95;
+  const contrastBoost = options?.contrastBoost ?? 1.12;
+
+  const luma = new Float32Array(width * height);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      luma[y * width + x] = src[i] * 0.299 + src[i + 1] * 0.587 + src[i + 2] * 0.114;
+    }
+  }
+
+  const edgeMask = new Uint8Array(width * height);
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      const p00 = luma[(y - 1) * width + (x - 1)];
+      const p01 = luma[(y - 1) * width + x];
+      const p02 = luma[(y - 1) * width + (x + 1)];
+      const p10 = luma[y * width + (x - 1)];
+      const p12 = luma[y * width + (x + 1)];
+      const p20 = luma[(y + 1) * width + (x - 1)];
+      const p21 = luma[(y + 1) * width + x];
+      const p22 = luma[(y + 1) * width + (x + 1)];
+
+      const gx = -p00 + p02 - 2 * p10 + 2 * p12 - p20 + p22;
+      const gy = p00 + 2 * p01 + p02 - p20 - 2 * p21 - p22;
+      const magnitude = Math.sqrt(gx * gx + gy * gy);
+      if (magnitude >= edgeThreshold) edgeMask[y * width + x] = 1;
+    }
+  }
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * 4;
+      const centerR = src[idx];
+      const centerG = src[idx + 1];
+      const centerB = src[idx + 2];
+
+      let r = centerR;
+      let g = centerG;
+      let b = centerB;
+
+      if (!edgeMask[y * width + x]) {
+        let sumR = 0;
+        let sumG = 0;
+        let sumB = 0;
+        let count = 0;
+
+        for (let ny = Math.max(0, y - 1); ny <= Math.min(height - 1, y + 1); ny++) {
+          for (let nx = Math.max(0, x - 1); nx <= Math.min(width - 1, x + 1); nx++) {
+            const nIdx = (ny * width + nx) * 4;
+            const nr = src[nIdx];
+            const ng = src[nIdx + 1];
+            const nb = src[nIdx + 2];
+            const d = colorDistance([centerR, centerG, centerB], [nr, ng, nb]);
+            if (d <= smoothColorThreshold) {
+              sumR += nr;
+              sumG += ng;
+              sumB += nb;
+              count++;
+            }
+          }
+        }
+
+        if (count > 0) {
+          r = sumR / count;
+          g = sumG / count;
+          b = sumB / count;
+        }
+      }
+
+      r = clampByte((r - 128) * contrastBoost + 128);
+      g = clampByte((g - 128) * contrastBoost + 128);
+      b = clampByte((b - 128) * contrastBoost + 128);
+
+      out[idx] = posterizeChannel(r, levels);
+      out[idx + 1] = posterizeChannel(g, levels);
+      out[idx + 2] = posterizeChannel(b, levels);
+      out[idx + 3] = src[idx + 3];
+    }
+  }
+
+  return new ImageData(out, width, height);
+}
+
+export function quantizePosterize(
+  imageData: ImageData,
+  paletteHexColors: string[]
+): ImageData {
+  const preprocessed = posterizePreprocess(imageData);
+  return quantizeNearest(preprocessed, paletteHexColors);
+}
+
 export function quantize(
   imageData: ImageData,
   paletteHexColors: string[],
@@ -131,6 +250,8 @@ export function quantize(
     return quantizeNearest(imageData, paletteHexColors);
   } else if (method === 'dithering') {
     return quantizeDithering(imageData, paletteHexColors);
+  } else if (method === 'posterize') {
+    return quantizePosterize(imageData, paletteHexColors);
   }
   throw new Error(`Unknown quantization method: ${method}`);
 }
