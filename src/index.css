@@ -16,6 +16,14 @@ input[type="range"] {
   accent-color: #FFC336;
 }
 
+.dark input[type="range"] {
+  background: linear-gradient(to right, #FFC336 0%, #FFC336 var(--range-fill, 0%), #404040 var(--range-fill, 0%), #404040 100%);
+}
+
+.dark select {
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f0f0f0' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+}
+
 /* Range slider thumb - webkit (Chrome, Safari, Edge) */
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -74,6 +82,22 @@ body {
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  --app-panel-bg: #ffffff;
+  --app-panel-alt: #f7f7f8;
+  --app-divider: #eeedef;
+  --app-shadow-offset: 4px;
+  --app-shadow-offset-lg: 5px;
+  --app-text: #000000;
+  --app-text-sub: #717182;
+  --app-text-muted: #a6a6a6;
+  --app-pill-bg: #FFF3CC;
+  --app-pill-text: #2b2b2b;
+  --app-btn-shadow: #eeedef;
+  --app-accent: #FFC336;
+  --app-btn-inactive-bg: #FFDA85;
+  --app-btn-inactive-text: #2b2b2b;
+  --app-processing-overlay: rgba(247, 247, 248, 0.85);
+
   --font-size: 16px;
   --background: #ffffff;
   --foreground: oklch(0.145 0 0);
@@ -115,6 +139,22 @@ body {
 }
 
 .dark {
+  --app-panel-bg: #1c1c1e;
+  --app-panel-alt: #111113;
+  --app-divider: #2c2c2e;
+  --app-shadow-offset: 4px;
+  --app-shadow-offset-lg: 4px;
+  --app-text: #f0f0f0;
+  --app-text-sub: #a0a0b0;
+  --app-text-muted: #666672;
+  --app-pill-bg: #2c2800;
+  --app-pill-text: #f0d070;
+  --app-btn-shadow: #2c2c2e;
+  --app-accent: #7a5500;
+  --app-btn-inactive-bg: #3a3020;
+  --app-btn-inactive-text: #c8981c;
+  --app-processing-overlay: rgba(20, 20, 22, 0.85);
+
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.145 0 0);
@@ -265,29 +305,217 @@ select {
   -moz-appearance: none;
 }
 
-/* Responsive grid for canvas selector cards */
-/* Desktop: 6 cards per row */
-.canvas-selector-grid {
-  grid-template-columns: repeat(6, 1fr) !important;
+/* Editor layout: stack on mobile, split on desktop */
+.app-editor-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
-/* Tablet/Intermediate: 4 cards per row */
-@media (max-width: 1024px) {
-  .canvas-selector-grid {
-    grid-template-columns: repeat(4, 1fr) !important;
+.app-editor-aside {
+  width: 100%;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+.app-editor-main {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: visible;
+}
+
+@media (min-width: 768px) {
+  .app-editor-layout {
+    flex-direction: row;
+    overflow: hidden;
+  }
+
+  .app-editor-aside {
+    width: clamp(300px, 38%, 460px);
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .app-editor-main {
+    overflow-y: auto;
   }
 }
 
-/* Mobile: 2 cards per row */
-@media (max-width: 640px) {
-  .canvas-selector-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-  }
+/* ── Button variants ──────────────────────────────────────────────── */
+
+/* Card buttons — selector tiles */
+.btn-card {
+  background-color: var(--app-panel-bg);
+  box-shadow: 0 6px 0 var(--app-divider);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transform: translateY(0);
+}
+.btn-card:not(.btn-card--selected):hover {
+  transform: translateY(-3px);
+  box-shadow: 0 9px 0 var(--app-divider);
+}
+.btn-card--selected {
+  background-color: var(--app-btn-inactive-bg);
+  box-shadow: 0 6px 0 var(--app-accent);
 }
 
-/* Very small mobile: 1 card per row to avoid overflow */
-@media (max-width: 360px) {
-  .canvas-selector-grid {
-    grid-template-columns: 1fr !important;
-  }
+/* Primary action buttons */
+.btn-action {
+  background-color: var(--app-btn-inactive-bg);
+  color: var(--app-btn-inactive-text);
+  box-shadow: 0 4px 0 #FFC336;
+  transition: background-color 0.15s, color 0.15s;
 }
+.btn-action:hover {
+  background-color: var(--app-accent);
+}
+.btn-action:active {
+  background-color: #FF8000;
+  color: white;
+  box-shadow: 0 4px 0 #CC5500;
+}
+
+/* Outline (secondary) buttons */
+.btn-outline {
+  background-color: transparent;
+  border: 2px solid var(--app-accent);
+  color: var(--app-accent);
+  transition: border-color 0.15s, color 0.15s;
+}
+.btn-outline:hover {
+  border-color: #FF8000;
+  color: #FF8000;
+}
+.btn-outline:active {
+  border-width: 3px;
+}
+
+/* Toggle tool buttons — persistent active state */
+.btn-tool {
+  background-color: var(--app-btn-inactive-bg);
+  color: var(--app-btn-inactive-text);
+  box-shadow: 0 4px 0 #FFC336;
+  transition: background-color 0.15s, color 0.15s;
+}
+.btn-tool:not(.btn-tool--active):hover {
+  background-color: var(--app-accent);
+}
+.btn-tool--active {
+  background-color: #FF8000;
+  color: white;
+  box-shadow: 0 4px 0 #CC5500;
+}
+
+/* Segmented control */
+.btn-segment-track {
+  background-color: var(--app-divider);
+}
+.btn-segment {
+  background-color: transparent;
+  color: var(--app-text-sub);
+  transition: background-color 0.15s, color 0.15s;
+}
+.btn-segment:not(.btn-segment--active):hover {
+  background-color: rgba(0, 0, 0, 0.1);
+  color: var(--app-text);
+}
+.dark .btn-segment:not(.btn-segment--active):hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+.btn-segment--active {
+  background-color: var(--app-btn-inactive-bg);
+  color: var(--app-btn-inactive-text);
+}
+
+/* Icon-only action buttons */
+.btn-icon {
+  background: transparent;
+  color: var(--app-text-sub);
+  transition: color 0.15s;
+}
+.btn-icon:hover {
+  color: var(--app-accent);
+}
+.btn-icon:active {
+  color: #FF8000;
+}
+
+/* Lift-on-hover for header icon buttons (upload, theme toggle) */
+.btn-lift {
+  transition: transform 0.15s ease;
+  transform: translateY(0);
+}
+.btn-lift:hover {
+  transform: translateY(-2px);
+}
+
+/* Radio-pill controls (style/palette selectors) */
+.radio-pill-group {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.radio-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  max-width: 100%;
+  flex: 0 1 auto;
+  padding: 0.5rem 0.875rem 0.5rem 2.25rem;
+  border-radius: 9999px;
+  border: none;
+  background-color: var(--app-btn-inactive-bg);
+  color: var(--app-btn-inactive-text);
+  box-shadow: 0 4px 0 #FFC336;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.radio-pill::before {
+  content: '';
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  background-color: #ffffff;
+  box-sizing: border-box;
+}
+
+.radio-pill:not(.radio-pill--selected):hover {
+  background-color: var(--app-accent);
+}
+
+.radio-pill--selected {
+  background-color: #FF8000;
+  color: #ffffff;
+  box-shadow: 0 4px 0 #CC5500;
+}
+
+.radio-pill--selected::before {
+  background-color: #FF8000;
+  border-color: #ffffff;
+}
+
+.radio-pill__input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+

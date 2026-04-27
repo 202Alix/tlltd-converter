@@ -1,5 +1,5 @@
 export const PrivacyPolicy = () => (
-  <div className="rounded-3xl" style={{ backgroundColor: 'white', boxShadow: '0 6px 0 #FFC336', borderRadius: '24px', padding: '32px', marginBottom: '32px' }}>
+  <div className="rounded-3xl" style={{ backgroundColor: 'white', boxShadow: '0 var(--app-shadow-offset) 0 #FFC336', borderRadius: '24px', padding: '32px', marginBottom: '32px' }}>
     <div style={{ color: '#030213' }}>
       <h1 style={{ fontSize: '28px', marginBottom: '16px', fontWeight: 'bold' }}>Privacy Policy</h1>
 

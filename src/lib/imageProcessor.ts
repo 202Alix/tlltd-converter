@@ -9,7 +9,7 @@ export interface ImageProcessOptions {
   paletteColors: string[];
   quantizationMethod: QuantizationMethod;
   paletteMode: 'default' | 'colorRange';
-  maxColors?: number | null;
+  maxColors?: number;
   sourceX?: number;
   sourceY?: number;
   sourceWidth?: number;
@@ -18,8 +18,15 @@ export interface ImageProcessOptions {
   canvasSize?: string; // Canvas size for mask lookup
 }
 
-export const DETAIL_LEVELS = [1, 3, 7, 13, 19, 27] as const;
-export type DetailLevel = typeof DETAIL_LEVELS[number];
+export type BrushMode = 'smooth' | 'pixel-perfect';
+
+export const SMOOTH_DETAIL_LEVELS = [1, 3, 7, 13, 19, 27] as const;
+export const PIXEL_PERFECT_DETAIL_LEVELS = [4, 8, 16, 32] as const;
+export type DetailLevel = typeof SMOOTH_DETAIL_LEVELS[number] | typeof PIXEL_PERFECT_DETAIL_LEVELS[number];
+
+export function getDetailLevelsForBrushMode(mode: BrushMode): readonly DetailLevel[] {
+  return mode === 'pixel-perfect' ? PIXEL_PERFECT_DETAIL_LEVELS : SMOOTH_DETAIL_LEVELS;
+}
 
 // Load an image file and return as ImageData
 export async function loadImage(file: File): Promise<{ imageData: ImageData; originalSize: { width: number; height: number } }> {
@@ -83,7 +90,11 @@ export function resizeImage(
     sourceX,
     sourceY,
     sourceWidth || sourceData.width,
-    sourceHeight || sourceData.height
+    sourceHeight || sourceData.height,
+    0,
+    0,
+    targetWidth,
+    targetHeight
   );
 
   return ctx.getImageData(0, 0, targetWidth, targetHeight);
@@ -150,6 +161,54 @@ function extractDiverseColors(imageData: ImageData, maxColors: number): string[]
   return selected;
 }
 
+// Select a representative fixed-palette subset while preserving dark/light anchors.
+function selectBalancedPaletteSubset(paletteColors: string[], maxColors: number): string[] {
+  if (maxColors >= paletteColors.length) return paletteColors;
+  if (maxColors <= 0) return [];
+
+  const uniqueColors = Array.from(new Set(paletteColors));
+  if (maxColors >= uniqueColors.length) return uniqueColors;
+
+  const rgbEntries = uniqueColors.map((hex) => ({ hex, rgb: hexToRgb(hex) }));
+  const luminance = ([r, g, b]: [number, number, number]) => (0.2126 * r) + (0.7152 * g) + (0.0722 * b);
+
+  let darkest = rgbEntries[0];
+  let brightest = rgbEntries[0];
+  for (const entry of rgbEntries) {
+    if (luminance(entry.rgb) < luminance(darkest.rgb)) darkest = entry;
+    if (luminance(entry.rgb) > luminance(brightest.rgb)) brightest = entry;
+  }
+
+  const selected = [darkest];
+  if (maxColors > 1 && brightest.hex !== darkest.hex) {
+    selected.push(brightest);
+  }
+
+  while (selected.length < maxColors) {
+    let bestCandidate = rgbEntries[0];
+    let bestScore = -1;
+
+    for (const candidate of rgbEntries) {
+      if (selected.some((s) => s.hex === candidate.hex)) continue;
+
+      let minDistance = Infinity;
+      for (const chosen of selected) {
+        const d = colorDistance(candidate.rgb, chosen.rgb);
+        if (d < minDistance) minDistance = d;
+      }
+
+      if (minDistance > bestScore) {
+        bestScore = minDistance;
+        bestCandidate = candidate;
+      }
+    }
+
+    selected.push(bestCandidate);
+  }
+
+  return selected.map((entry) => entry.hex);
+}
+
 // Process image: resize and optionally quantize based on palette mode
 export async function processImage(
   sourceData: ImageData,
@@ -171,18 +230,15 @@ export async function processImage(
   // Apply quantization based on palette mode
   let quantized: ImageData;
   if (options.paletteMode === 'colorRange') {
-    if (options.maxColors !== null && options.maxColors !== undefined && options.maxColors > 0) {
-      const palette = extractDiverseColors(resized, options.maxColors);
-      quantized = quantize(resized, palette, options.quantizationMethod);
-    } else {
-      quantized = resized;
-    }
+    const maxColors = Math.max(1, Math.min(128, options.maxColors ?? 128));
+    const palette = extractDiverseColors(resized, maxColors);
+    quantized = quantize(resized, palette, options.quantizationMethod);
   } else {
     // Default palette mode
     let paletteToUse = options.paletteColors;
-    if (options.maxColors !== null && options.maxColors !== undefined && options.maxColors > 0 && options.maxColors < options.paletteColors.length) {
-      // Use first N colors from the default palette
-      paletteToUse = options.paletteColors.slice(0, options.maxColors);
+    if (options.maxColors !== undefined && options.maxColors > 0 && options.maxColors < options.paletteColors.length) {
+      // Use a balanced subset so low color counts still retain usable dark/light hues.
+      paletteToUse = selectBalancedPaletteSubset(options.paletteColors, options.maxColors);
     }
     quantized = quantize(resized, paletteToUse, options.quantizationMethod);
   }

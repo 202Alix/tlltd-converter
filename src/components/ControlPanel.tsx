@@ -1,61 +1,26 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { HelpCircle } from 'lucide-react';
 import { CANVAS_SIZES, CanvasSizeKey } from '../lib/palettes';
 import { QuantizationMethod } from '../lib/quantizer';
-import { DETAIL_LEVELS, DetailLevel } from '../lib/imageProcessor';
+import { BrushMode, DetailLevel, getDetailLevelsForBrushMode } from '../lib/imageProcessor';
+import { Tooltip } from './Tooltip';
+import { TYPOGRAPHY } from '../lib/typography';
 
 interface ControlPanelProps {
   selectedCanvasSize: CanvasSizeKey;
   onCanvasSizeChange: (size: CanvasSizeKey) => void;
   paletteMode: 'default' | 'colorRange';
   onPaletteModeChange: (mode: 'default' | 'colorRange') => void;
-  maxColors: number | null;
-  onMaxColorsChange: (count: number | null) => void;
+  maxColors: number;
+  onMaxColorsChange: (count: number) => void;
+  brushMode: BrushMode;
+  onBrushModeChange: (mode: BrushMode) => void;
   quantizationMethod: QuantizationMethod;
   onQuantizationMethodChange: (method: QuantizationMethod) => void;
   detailLevel: DetailLevel;
   onDetailLevelChange: (level: DetailLevel) => void;
+  onPresetApply: (mode: BrushMode, detail: DetailLevel, colors: number) => void;
   onPageChange: (page: 'contact') => void;
 }
-
-interface TooltipProps {
-  text: string;
-}
-
-const Tooltip: React.FC<TooltipProps> = ({ text }) => {
-  const [isVisible, setIsVisible] = useState(false);
-
-  return (
-    <div
-      style={{ position: 'relative', display: 'inline-flex', cursor: 'help' }}
-      onMouseEnter={() => setIsVisible(true)}
-      onMouseLeave={() => setIsVisible(false)}
-    >
-      <HelpCircle size={16} style={{ color: '#a6a6a6' }} />
-      {isVisible && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '100%',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            backgroundColor: '#2b2b2b',
-            color: 'white',
-            padding: '6px 8px',
-            borderRadius: '4px',
-            fontSize: '12px',
-            whiteSpace: 'nowrap',
-            marginBottom: '4px',
-            zIndex: 1000,
-            pointerEvents: 'none'
-          }}
-        >
-          {text}
-        </div>
-      )}
-    </div>
-  );
-};
 
 const ValuePill: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <span
@@ -63,12 +28,12 @@ const ValuePill: React.FC<{ children: React.ReactNode }> = ({ children }) => (
       display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '2px 8px',
+      padding: '2px 7px',
       borderRadius: '9999px',
-      backgroundColor: '#FFF3CC',
-      color: '#2b2b2b',
-      fontSize: 'inherit',
-      fontWeight: 700,
+      backgroundColor: 'var(--app-pill-bg)',
+      color: 'var(--app-pill-text)',
+      fontSize: '12px',
+      fontWeight: 600,
       lineHeight: 1,
       whiteSpace: 'nowrap',
       flexShrink: 0,
@@ -79,16 +44,31 @@ const ValuePill: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 );
 
 const SECTION_TITLE_STYLE: React.CSSProperties = {
-  color: 'black',
-  fontSize: 'clamp(1rem, 4.6vw, 20px)',
+  color: 'var(--app-text)',
+  fontSize: '15px',
+  lineHeight: 1.2,
+  margin: 0,
 };
 
 const TITLE_ROW_STYLE: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
-  gap: '0.5rem',
+  gap: '0.375rem',
   flexWrap: 'wrap',
-  marginBottom: '0.5rem',
+  marginBottom: '0.375rem',
+};
+
+const PRESETS_BY_MODE: Record<BrushMode, { label: string; detail: DetailLevel; colors: number }[]> = {
+  smooth: [
+    { label: 'Detailed', detail: 1, colors: 24 },
+    { label: 'Balanced', detail: 3, colors: 16 },
+    { label: 'Chunky', detail: 7, colors: 8 },
+  ],
+  'pixel-perfect': [
+    { label: 'Detailed', detail: 4, colors: 24 },
+    { label: 'Balanced', detail: 8, colors: 16 },
+    { label: 'Chunky', detail: 16, colors: 8 },
+  ],
 };
 
 export const ControlPanel: React.FC<ControlPanelProps> = ({
@@ -98,22 +78,34 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   onPaletteModeChange,
   maxColors,
   onMaxColorsChange,
+  brushMode,
+  onBrushModeChange,
   quantizationMethod,
   onQuantizationMethodChange,
   detailLevel,
   onDetailLevelChange,
+  onPresetApply,
   onPageChange,
 }) => {
-  const [tempDetailLevel, setTempDetailLevel] = useState<number>(DETAIL_LEVELS.indexOf(detailLevel));
-  const [tempMaxColors, setTempMaxColors] = useState<number>(maxColors === null ? 256 : maxColors);
+  const detailLevels = getDetailLevelsForBrushMode(brushMode);
+  const [tempDetailLevel, setTempDetailLevel] = useState<number>(() => {
+    const initialIndex = detailLevels.indexOf(detailLevel);
+    return initialIndex >= 0 ? initialIndex : 0;
+  });
+  const [tempMaxColors, setTempMaxColors] = useState<number>(maxColors);
   const isDraggingRef = useRef(false);
+
+  useEffect(() => {
+    const nextIndex = detailLevels.indexOf(detailLevel);
+    setTempDetailLevel(nextIndex >= 0 ? nextIndex : 0);
+  }, [detailLevel, brushMode]);
 
   // Adjust tempMaxColors when palette mode changes
   useEffect(() => {
     if (paletteMode === 'default' && tempMaxColors > 84) {
       setTempMaxColors(84);
-    } else if (paletteMode === 'colorRange' && tempMaxColors > 256) {
-      setTempMaxColors(256);
+    } else if (paletteMode === 'colorRange' && tempMaxColors > 128) {
+      setTempMaxColors(128);
     }
   }, [paletteMode]);
 
@@ -127,14 +119,14 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   const handleDetailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value);
     setTempDetailLevel(value);
-    updateSliderFill(value, 0, 5, e.currentTarget);
+    updateSliderFill(value, 0, detailLevels.length - 1, e.currentTarget);
   };
 
   const handleMaxColorsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value);
     setTempMaxColors(value);
     const min = 1;
-    const max = paletteMode === 'colorRange' ? 256 : 84;
+    const max = paletteMode === 'colorRange' ? 128 : 84;
     updateSliderFill(value, min, max, e.currentTarget);
   };
 
@@ -145,7 +137,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   const handleDetailPointerUp = () => {
     if (isDraggingRef.current) {
       isDraggingRef.current = false;
-      onDetailLevelChange(DETAIL_LEVELS[tempDetailLevel]);
+      onDetailLevelChange(detailLevels[tempDetailLevel]);
     }
   };
 
@@ -156,119 +148,197 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   const handleMaxColorsPointerUp = () => {
     if (isDraggingRef.current) {
       isDraggingRef.current = false;
-      // Send null (unlimited) when at max value for the current palette mode
-      const isUnlimited = paletteMode === 'colorRange' ? tempMaxColors === 256 : tempMaxColors === 84;
-      onMaxColorsChange(isUnlimited ? null : tempMaxColors);
+      onMaxColorsChange(tempMaxColors);
     }
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Color Reduction and Color Palette */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(250px, 100%), 1fr))', gap: 'clamp(1rem, 3vw, 2rem)' }}>
-        <div>
-          <div style={TITLE_ROW_STYLE}>
-            <h3 className="text-base font-bold" style={SECTION_TITLE_STYLE}>Color Reduction</h3>
-            <Tooltip text="Choose how colors are simplified. Solid uses single colors, Blended mixes nearby colors for smoother transitions." />
-          </div>
-          <select
-            value={quantizationMethod}
-            onChange={(e) => onQuantizationMethodChange(e.target.value as QuantizationMethod)}
-            className="w-full px-4 py-2 rounded-2xl bg-input text-foreground hover:opacity-90 transition-colors font-medium"
-            style={{ boxShadow: '0 6px 0 #eeedef' }}
-          >
-            <option value="nearest-color">Solid</option>
-            <option value="dithering">Blended</option>
-          </select>
-        </div>
+  const modePresets = PRESETS_BY_MODE[brushMode];
+  const maxColorsLimit = paletteMode === 'colorRange' ? 128 : 84;
 
-        <div>
-          <div style={TITLE_ROW_STYLE}>
-            <h3 className="text-base font-bold" style={SECTION_TITLE_STYLE}>Color Palette</h3>
-            <Tooltip text="In-Game uses the Tomodachi colors. Custom uses any colors from your image." />
-          </div>
-          <select
-            value={paletteMode}
-            onChange={(e) => onPaletteModeChange(e.target.value as 'default' | 'colorRange')}
-            className="w-full px-4 py-2 rounded-2xl bg-input text-foreground hover:opacity-90 transition-colors font-medium"
-            style={{ boxShadow: '0 6px 0 #eeedef' }}
-          >
-            <option value="default">In-Game</option>
-            <option value="colorRange">Custom</option>
-          </select>
+  return (
+    <div className="space-y-4">
+      {/* Presets */}
+      <div>
+        <div style={TITLE_ROW_STYLE}>
+          <h3 className={TYPOGRAPHY.h3} style={SECTION_TITLE_STYLE}>Quick Preset</h3>
+          <Tooltip text="Snap Detail and Colors to a preset combination." />
+        </div>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          {modePresets.map(({ label, detail, colors }) => (
+            <button
+              key={label}
+              aria-pressed={detailLevels[tempDetailLevel] === detail && tempMaxColors === colors}
+              onClick={() => {
+                const idx = detailLevels.indexOf(detail);
+                setTempDetailLevel(idx);
+                setTempMaxColors(colors);
+                onPresetApply(brushMode, detail, colors);
+              }}
+              className={`flex-1 px-3 py-1.5 rounded-xl font-medium text-[14px] btn-tool${detailLevels[tempDetailLevel] === detail && tempMaxColors === colors ? ' btn-tool--active' : ''}`}
+              style={{ border: 'none', cursor: 'pointer' }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Detail Level and Max Colors */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(250px, 100%), 1fr))', gap: 'clamp(1rem, 3vw, 2rem)' }}>
+      {/* Brush mode */}
+      <div>
+        <div style={TITLE_ROW_STYLE}>
+          <h3 className={TYPOGRAPHY.h3} style={SECTION_TITLE_STYLE}>Brush Mode</h3>
+          <Tooltip text="Smooth offers 1, 3, 7, 13, 19, 27 for softer strokes. Pixel Perfect offers 4, 8, 16, 32 and aligns cleanly to the grid." />
+        </div>
+        <fieldset className="radio-pill-group" aria-label="Brush mode">
+          <label className={`radio-pill${brushMode === 'smooth' ? ' radio-pill--selected' : ''}`}>
+            <input
+              type="radio"
+              name="brush-mode"
+              value="smooth"
+              checked={brushMode === 'smooth'}
+              onChange={() => onBrushModeChange('smooth')}
+              className="radio-pill__input"
+            />
+            <span>Smooth Mode</span>
+          </label>
+          <label className={`radio-pill${brushMode === 'pixel-perfect' ? ' radio-pill--selected' : ''}`}>
+            <input
+              type="radio"
+              name="brush-mode"
+              value="pixel-perfect"
+              checked={brushMode === 'pixel-perfect'}
+              onChange={() => onBrushModeChange('pixel-perfect')}
+              className="radio-pill__input"
+            />
+            <span>Pixel Perfect</span>
+          </label>
+        </fieldset>
+      </div>
+
+      {/* Style and Palette */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: '0.875rem' }}>
         <div>
           <div style={TITLE_ROW_STYLE}>
-            <h3 className="text-base font-bold" style={SECTION_TITLE_STYLE}>Block Size:</h3>
-            <ValuePill>x{DETAIL_LEVELS[tempDetailLevel]}</ValuePill>
-            <Tooltip text="Larger blocks = simpler image. x1 = tiny detailed blocks, x27 = large simple blocks." />
+            <h3 className={TYPOGRAPHY.h3} style={SECTION_TITLE_STYLE}>Style</h3>
+            <Tooltip text="Solid maps each pixel to the nearest color. Blended dithers nearby colors for smoother gradients. Flat posterizes tones first for bolder, cleaner shape separation." />
+          </div>
+          <fieldset className="radio-pill-group" aria-label="Style">
+            <label className={`radio-pill${quantizationMethod === 'nearest-color' ? ' radio-pill--selected' : ''}`}>
+              <input
+                type="radio"
+                name="style-mode"
+                value="nearest-color"
+                checked={quantizationMethod === 'nearest-color'}
+                onChange={() => onQuantizationMethodChange('nearest-color')}
+                className="radio-pill__input"
+              />
+              <span>Solid</span>
+            </label>
+            <label className={`radio-pill${quantizationMethod === 'dithering' ? ' radio-pill--selected' : ''}`}>
+              <input
+                type="radio"
+                name="style-mode"
+                value="dithering"
+                checked={quantizationMethod === 'dithering'}
+                onChange={() => onQuantizationMethodChange('dithering')}
+                className="radio-pill__input"
+              />
+              <span>Blended</span>
+            </label>
+            <label className={`radio-pill${quantizationMethod === 'posterize' ? ' radio-pill--selected' : ''}`}>
+              <input
+                type="radio"
+                name="style-mode"
+                value="posterize"
+                checked={quantizationMethod === 'posterize'}
+                onChange={() => onQuantizationMethodChange('posterize')}
+                className="radio-pill__input"
+              />
+              <span>Flat</span>
+            </label>
+          </fieldset>
+        </div>
+
+        <div>
+          <div style={TITLE_ROW_STYLE}>
+            <h3 className={TYPOGRAPHY.h3} style={SECTION_TITLE_STYLE}>Palette</h3>
+            <Tooltip text="Default Palette uses the official Tomodachi Life face-paint colors. Gradient mode extracts colors directly from your image." />
+          </div>
+          <fieldset className="radio-pill-group" aria-label="Palette">
+            <label className={`radio-pill${paletteMode === 'default' ? ' radio-pill--selected' : ''}`}>
+              <input
+                type="radio"
+                name="palette-mode"
+                value="default"
+                checked={paletteMode === 'default'}
+                onChange={() => onPaletteModeChange('default')}
+                className="radio-pill__input"
+              />
+              <span>Default Palette</span>
+            </label>
+            <label className={`radio-pill${paletteMode === 'colorRange' ? ' radio-pill--selected' : ''}`}>
+              <input
+                type="radio"
+                name="palette-mode"
+                value="colorRange"
+                checked={paletteMode === 'colorRange'}
+                onChange={() => onPaletteModeChange('colorRange')}
+                className="radio-pill__input"
+              />
+              <span>Gradient Mode</span>
+            </label>
+          </fieldset>
+        </div>
+      </div>
+
+      {/* Detail and Colors */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: '0.875rem' }}>
+        <div>
+          <div style={TITLE_ROW_STYLE}>
+            <h3 className={TYPOGRAPHY.h3} style={SECTION_TITLE_STYLE}>Detail</h3>
+            <ValuePill>x{detailLevels[tempDetailLevel]}</ValuePill>
+            <Tooltip text={brushMode === 'pixel-perfect' ? 'Grid-snapped detail for crisp pixel-art alignment.' : 'Fine keeps small sharp pixels. Chunky gives a bolder block look.'} />
           </div>
           <input
             type="range"
             min="0"
-            max="5"
+            max={detailLevels.length - 1}
             step="1"
             value={tempDetailLevel}
             onChange={handleDetailChange}
             onPointerDown={handleDetailPointerDown}
             onPointerUp={handleDetailPointerUp}
             className="w-full h-3 bg-linear-to-r from-secondary to-accent rounded-full appearance-none cursor-pointer accent-primary"
-            style={{
-              '--range-fill': `${(tempDetailLevel / 5) * 100}%`
-            } as React.CSSProperties}
+            style={{ '--range-fill': `${(tempDetailLevel / (detailLevels.length - 1)) * 100}%` } as React.CSSProperties}
           />
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2px' }}>
+            <span className={TYPOGRAPHY.caption} style={{ color: 'var(--app-text-muted)' }}>{brushMode === 'pixel-perfect' ? 'x4' : 'Detailed'}</span>
+            <span className={TYPOGRAPHY.caption} style={{ color: 'var(--app-text-muted)' }}>{brushMode === 'pixel-perfect' ? 'x32' : 'Chunky'}</span>
+          </div>
         </div>
 
         <div>
-          {paletteMode === 'colorRange' ? (
-            <>
-              <div style={TITLE_ROW_STYLE}>
-                <h3 className="text-base font-bold" style={SECTION_TITLE_STYLE}>Max Colors:</h3>
-                <ValuePill>{tempMaxColors === 256 ? 'Unlimited' : tempMaxColors}</ValuePill>
-                <Tooltip text="Fewer colors = simpler results. Slide to the right for unlimited colors." />
-              </div>
-              <input
-                type="range"
-                min="1"
-                max="256"
-                step="1"
-                value={tempMaxColors}
-                onChange={handleMaxColorsChange}
-                onPointerDown={handleMaxColorsPointerDown}
-                onPointerUp={handleMaxColorsPointerUp}
-                className="w-full h-3 bg-linear-to-r from-secondary to-accent rounded-full appearance-none cursor-pointer accent-primary"
-                style={{
-                  '--range-fill': `${((tempMaxColors - 1) / (256 - 1)) * 100}%`
-                } as React.CSSProperties}
-              />
-            </>
-          ) : (
-            <>
-              <div style={TITLE_ROW_STYLE}>
-                <h3 className="text-base font-bold" style={SECTION_TITLE_STYLE}>Max Colors:</h3>
-                <ValuePill>{tempMaxColors === 84 ? 'Unlimited' : tempMaxColors}</ValuePill>
-                <Tooltip text="Fewer colors = simpler results. Slide to the right for unlimited colors." />
-              </div>
-              <input
-                type="range"
-                min="1"
-                max="84"
-                step="1"
-                value={tempMaxColors}
-                onChange={handleMaxColorsChange}
-                onPointerDown={handleMaxColorsPointerDown}
-                onPointerUp={handleMaxColorsPointerUp}
-                className="w-full h-3 bg-linear-to-r from-secondary to-accent rounded-full appearance-none cursor-pointer accent-primary"
-                style={{
-                  '--range-fill': `${((tempMaxColors - 1) / (84 - 1)) * 100}%`
-                } as React.CSSProperties}
-              />
-            </>
-          )}
+          <div style={TITLE_ROW_STYLE}>
+            <h3 className={TYPOGRAPHY.h3} style={SECTION_TITLE_STYLE}>Colors</h3>
+            <ValuePill>{tempMaxColors}</ValuePill>
+            <Tooltip text="Limit the number of colors used. Fewer colors gives a flatter look." />
+          </div>
+          <input
+            type="range"
+            min="1"
+            max={maxColorsLimit}
+            step="1"
+            value={tempMaxColors}
+            onChange={handleMaxColorsChange}
+            onPointerDown={handleMaxColorsPointerDown}
+            onPointerUp={handleMaxColorsPointerUp}
+            className="w-full h-3 bg-linear-to-r from-secondary to-accent rounded-full appearance-none cursor-pointer accent-primary"
+            style={{ '--range-fill': `${((tempMaxColors - 1) / (maxColorsLimit - 1)) * 100}%` } as React.CSSProperties}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2px' }}>
+            <span className={TYPOGRAPHY.caption} style={{ color: 'var(--app-text-muted)' }}>1</span>
+            <span className={TYPOGRAPHY.caption} style={{ color: 'var(--app-text-muted)' }}>{maxColorsLimit}</span>
+          </div>
         </div>
       </div>
     </div>

@@ -1,16 +1,52 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { ZoomIn, ZoomOut, RotateCcw, Grid3x3, Download, Hand, Pipette, Wand2, Maximize2, X } from 'lucide-react';
 import { findClosestColor } from '../lib/colorUtils';
 import { PALETTES } from '../lib/palettes';
 import { CANVAS_SIZES, CanvasSizeKey } from '../lib/palettes';
+import { TYPOGRAPHY } from '../lib/typography';
+
+const hexToIngameHSB = (hex: string): { h: number; s: number; b: number } => {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const delta = max - min;
+
+  // Brightness: gamma-2.0 on max sRGB component
+  const B = Math.round(max * max * 110);
+
+  // Saturation: sRGB delta/max raised to 1/2.2 (gamma-encoded saturation)
+  const S = max === 0 ? 0 : Math.round(Math.pow(delta / max, 1 / 2.2) * 211);
+
+  // Hue: HSV hue computed in gamma-1.8 linearized RGB, then inverted
+  // H=201 is the sentinel for achromatic colors (confirmed: red, gray, black all give H=201)
+  let hDeg = 0;
+  if (delta > 0) {
+    const rl = Math.pow(r, 1.8);
+    const gl = Math.pow(g, 1.8);
+    const bl = Math.pow(b, 1.8);
+    const maxL = Math.max(rl, gl, bl);
+    const dL = maxL - Math.min(rl, gl, bl);
+    if (dL > 0) {
+      let raw: number;
+      if (maxL === rl)      raw = ((gl - bl) / dL + 6) % 6;
+      else if (maxL === gl) raw = (bl - rl) / dL + 2;
+      else                  raw = (rl - gl) / dL + 4;
+      hDeg = raw * 60;
+    }
+  }
+  const H = delta === 0 ? 201 : Math.round(((360 - hDeg) / 360) * 201);
+
+  return { h: H, s: S, b: B };
+};
 
 // Color constants
 const COLOR_PRIMARY = '#FF8000';
-const COLOR_SECONDARY = '#FFDA85';
-const COLOR_TEXT = '#2b2b2b';
 const COLOR_OVERLAY = 'rgba(0, 0, 0, 0.7)';
-const COLOR_SHADOW = '#FFC336';
+const COLOR_SHADOW = 'var(--app-accent)';
 
 interface ConvertedViewProps {
   convertedImageData: ImageData;
@@ -18,6 +54,7 @@ interface ConvertedViewProps {
   onToggleGrid: (show: boolean) => void;
   canvasSize: CanvasSizeKey;
   paletteMode: 'default' | 'colorRange';
+  isProcessing?: boolean;
 }
 
 interface Tooltip {
@@ -39,6 +76,7 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
   onToggleGrid,
   canvasSize,
   paletteMode,
+  isProcessing = false,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [zoomPercent, setZoomPercent] = useState(100);
@@ -53,8 +91,38 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
   const [viewportCenterX, setViewportCenterX] = useState<number | null>(null);
   const [viewportCenterY, setViewportCenterY] = useState<number | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [exportScale, setExportScale] = useState(1);
+  const [copiedTooltip, setCopiedTooltip] = useState(false);
 
   const paletteColors = PALETTES.palette1.colors;
+
+  const colorSummary = useMemo(() => {
+    const counts = new Map<string, number>();
+    const data = convertedImageData.data;
+    let totalVisible = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] === 0) continue;
+      totalVisible++;
+      const r = data[i], g = data[i + 1], b = data[i + 2];
+      const hex = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`.toUpperCase();
+      counts.set(hex, (counts.get(hex) || 0) + 1);
+    }
+    if (totalVisible === 0) return [];
+    return Array.from(counts.entries())
+      .map(([hex, count]) => {
+        const pct = count / totalVisible;
+        if (paletteMode === 'default') {
+          const r = parseInt(hex.slice(1, 3), 16);
+          const g = parseInt(hex.slice(3, 5), 16);
+          const b = parseInt(hex.slice(5, 7), 16);
+          const closest = findClosestColor([r, g, b], paletteColors);
+          return { hex, pct, row: Math.floor(closest.index / 12) + 1, col: (closest.index % 12) + 1 };
+        }
+        return { hex, pct, row: -1, col: -1 };
+      })
+      .sort((a, b) => b.pct - a.pct);
+  }, [convertedImageData, paletteMode]);
+
   const targetSize = CANVAS_SIZES[canvasSize];
   const targetAspectRatio = targetSize.width / targetSize.height;
 
@@ -67,7 +135,7 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
     : null;
 
   // Fixed canvas size matching target aspect ratio - 2x larger
-  const canvasWidth = 600;
+  const canvasWidth = 400;
   const canvasHeight = canvasWidth / targetAspectRatio;
 
   // Calculate base scale to fit image in window at 100%
@@ -452,12 +520,36 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
           e.preventDefault();
           handleZoomChange(zoomPercent - 10);
           break;
+        case 'p':
+        case 'P':
+          e.preventDefault();
+          setToolMode('pan');
+          break;
+        case 'e':
+        case 'E':
+          e.preventDefault();
+          setToolMode(toolMode === 'eyedropper' ? 'pan' : 'eyedropper');
+          break;
+        case 'f':
+        case 'F':
+          e.preventDefault();
+          setToolMode(toolMode === 'colorFilter' ? 'pan' : 'colorFilter');
+          break;
+        case 'g':
+        case 'G':
+          e.preventDefault();
+          onToggleGrid(!showGrid);
+          break;
+        case 'Escape':
+          setTooltip(null);
+          setToolMode('pan');
+          break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [toolMode, zoomPercent]);
+  }, [toolMode, zoomPercent, showGrid, onToggleGrid]);
 
   const handleCanvasClick = (e: React.MouseEvent) => {
     if (toolMode === 'eyedropper') {
@@ -584,20 +676,38 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
   };
 
   const handleDownload = useCallback(() => {
-    if (convertedImageData) {
-      const canvas = document.createElement('canvas');
-      canvas.width = convertedImageData.width;
-      canvas.height = convertedImageData.height;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.putImageData(convertedImageData, 0, 0);
-        const link = document.createElement('a');
-        link.download = `tomodachi-${canvasSize}.png`;
-        link.href = canvas.toDataURL();
-        link.click();
-      }
-    }
-  }, [convertedImageData, canvasSize]);
+    if (!convertedImageData) return;
+    const src = document.createElement('canvas');
+    src.width = convertedImageData.width;
+    src.height = convertedImageData.height;
+    const srcCtx = src.getContext('2d');
+    if (!srcCtx) return;
+    srcCtx.putImageData(convertedImageData, 0, 0);
+
+    const out = document.createElement('canvas');
+    out.width = convertedImageData.width * exportScale;
+    out.height = convertedImageData.height * exportScale;
+    const outCtx = out.getContext('2d');
+    if (!outCtx) return;
+    outCtx.imageSmoothingEnabled = false;
+    outCtx.drawImage(src, 0, 0, out.width, out.height);
+
+    const link = document.createElement('a');
+    link.download = `tomodachi-${canvasSize}${exportScale > 1 ? `@${exportScale}x` : ''}.png`;
+    link.href = out.toDataURL();
+    link.click();
+  }, [convertedImageData, canvasSize, exportScale]);
+
+  const handleCopyTooltip = useCallback(() => {
+    if (!tooltip) return;
+    const text = paletteMode === 'default'
+      ? `Row ${tooltip.row}, Col ${tooltip.col}`
+      : tooltip.color.toUpperCase();
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedTooltip(true);
+      setTimeout(() => setCopiedTooltip(false), 1500);
+    });
+  }, [tooltip, paletteMode]);
 
   // Force canvas redraw when entering/exiting fullscreen
   useEffect(() => {
@@ -608,190 +718,291 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
   }, [isFullscreen]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', gap: '2rem' }}>
+    <div className="flex w-full flex-col items-stretch gap-8">
       {!isFullscreen && (
         <>
-          <canvas
-            ref={canvasRef}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            onClick={handleCanvasClick}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            onWheel={handleWheel}
-            className={`bg-input w-full ${
-              toolMode === 'pan' ? 'cursor-grab active:cursor-grabbing' : 'cursor-crosshair'
-            }`}
-            style={{ imageRendering: 'pixelated', maxWidth: 'min(512px, 100%)', height: 'auto', touchAction: 'none' }}
-          />
+          <div className="flex w-full flex-col gap-8 rounded-2xl bg-(--app-panel-bg) p-4 shadow-[0_8px_0_var(--app-divider)]">
+          <div className="relative flex w-full justify-center">
+            <canvas
+              ref={canvasRef}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onClick={handleCanvasClick}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              onWheel={handleWheel}
+              className={`bg-input ${
+                toolMode === 'pan' ? 'cursor-grab active:cursor-grabbing' : 'cursor-crosshair'
+              }`}
+              style={{ imageRendering: 'pixelated', width: '100%', maxWidth: `${canvasWidth}px`, height: 'auto', touchAction: 'none', display: 'block' }}
+            />
+            {isProcessing && (
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--app-processing-overlay)', borderRadius: '4px' }}>
+                <div className="animate-spin" style={{ width: '28px', height: '28px', borderRadius: '50%', border: '3px solid var(--app-accent)', borderTopColor: '#FF8000' }} />
+              </div>
+            )}
+          </div>
 
       {/* Bottom section with tools on left and grid/download on right */}
-      <div className="flex w-full flex-wrap" style={{ justifyContent: 'space-between', gap: 'clamp(1rem, 3vw, 2rem)' }}>
+      <div className="flex w-full flex-wrap justify-between gap-3">
         {/* Tools on the left */}
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex min-w-0 flex-1 flex-wrap gap-2">
           <button
             onClick={() => setToolMode('pan')}
-            className="px-3 py-2 rounded-lg transition-all font-bold flex items-center gap-2"
-            style={{
-              backgroundColor: toolMode === 'pan' ? '#FF8000' : '#FFDA85',
-              color: toolMode === 'pan' ? 'white' : 'black',
-              border: 'none',
-            }}
-            title="Pan mode (drag to move)"
+            className={`px-3 py-2 rounded-lg font-bold flex items-center gap-2 btn-tool${toolMode === 'pan' ? ' btn-tool--active' : ''}`}
+            style={{ border: 'none' }}
+            title="Pan mode — P"
           >
             <Hand strokeWidth={3} className="w-5 h-5" />
             Pan
+            <kbd style={{ fontSize: '10px', padding: '1px 4px', borderRadius: '3px', backgroundColor: 'rgba(0,0,0,0.15)', fontFamily: 'monospace', fontWeight: 400 }}>P</kbd>
           </button>
           <button
             onClick={() => setToolMode(toolMode === 'eyedropper' ? 'pan' : 'eyedropper')}
-            className="px-3 py-2 rounded-lg transition-all font-bold flex items-center gap-2"
-            style={{
-              backgroundColor: toolMode === 'eyedropper' ? '#FF8000' : '#FFDA85',
-              color: toolMode === 'eyedropper' ? 'white' : 'black',
-              border: 'none',
-            }}
-            title="Eyedropper mode (click to pick color)"
+            className={`px-3 py-2 rounded-lg font-bold flex items-center gap-2 btn-tool${toolMode === 'eyedropper' ? ' btn-tool--active' : ''}`}
+            style={{ border: 'none' }}
+            title="Pick color — E"
           >
             <Pipette strokeWidth={3} className="w-5 h-5" />
             Pick Color
+            <kbd style={{ fontSize: '10px', padding: '1px 4px', borderRadius: '3px', backgroundColor: 'rgba(0,0,0,0.15)', fontFamily: 'monospace', fontWeight: 400 }}>E</kbd>
           </button>
           <button
             onClick={() => setToolMode(toolMode === 'colorFilter' ? 'pan' : 'colorFilter')}
-            className="px-3 py-2 rounded-lg transition-all font-bold flex items-center gap-2"
-            style={{
-              backgroundColor: toolMode === 'colorFilter' ? '#FF8000' : '#FFDA85',
-              color: toolMode === 'colorFilter' ? 'white' : 'black',
-              border: 'none',
-            }}
-            title="Color filter mode (click to select color to highlight)"
+            className={`px-3 py-2 rounded-lg font-bold flex items-center gap-2 btn-tool${toolMode === 'colorFilter' ? ' btn-tool--active' : ''}`}
+            style={{ border: 'none' }}
+            title="Color filter — F"
           >
             <Wand2 strokeWidth={3} className="w-5 h-5" />
             Filter
+            <kbd style={{ fontSize: '10px', padding: '1px 4px', borderRadius: '3px', backgroundColor: 'rgba(0,0,0,0.15)', fontFamily: 'monospace', fontWeight: 400 }}>F</kbd>
           </button>
         </div>
 
-        {/* Grid and Download on the right */}
-        <div className="flex gap-2 flex-wrap">
+        {/* Grid, scale, download, fullscreen on the right */}
+        <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
           <button
             onClick={() => onToggleGrid(!showGrid)}
-            title="Toggle grid overlay"
-            className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
-            style={{
-              backgroundColor: showGrid ? '#FF8000' : '#FFDA85',
-              color: showGrid ? 'white' : 'black',
-              border: 'none',
-            }}
+            title="Toggle grid — G"
+            aria-label="Toggle pixel grid overlay"
+            className={`px-3 py-2 rounded-lg flex items-center gap-2 font-bold btn-tool${showGrid ? ' btn-tool--active' : ''}`}
+            style={{ border: 'none' }}
           >
             <Grid3x3 strokeWidth={3} className="w-5 h-5" />
           </button>
+          {/* Export scale segmented control */}
+          <div className="btn-segment-track flex gap-1 rounded-lg p-1">
+            {[1, 2, 4].map(s => (
+              <button
+                key={s}
+                onClick={() => setExportScale(s)}
+                className={`btn-segment${exportScale === s ? ' btn-segment--active' : ''}`}
+                style={{
+                  padding: '2px 8px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                {s}×
+              </button>
+            ))}
+          </div>
           <button
             onClick={handleDownload}
             title="Download as PNG"
-            className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold disabled:opacity-50"
-            style={{
-              backgroundColor: '#FFDA85',
-              color: 'black',
-            }}
+            aria-label="Download converted image as PNG"
+            className="px-4 py-2 rounded-lg flex items-center gap-2 font-bold disabled:opacity-50 btn-action"
+            style={{ border: 'none' }}
             disabled={!convertedImageData}
           >
             <Download strokeWidth={3} className="w-5 h-5" />
+            <span>Download PNG</span>
           </button>
           <button
             onClick={() => setIsFullscreen(true)}
             title="Fullscreen"
-            className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
-            style={{
-              backgroundColor: COLOR_SECONDARY,
-              color: 'black',
-              border: 'none',
-            }}
+            aria-label="Open fullscreen view"
+            className="px-3 py-2 rounded-lg flex items-center gap-2 font-bold btn-action"
+            style={{ border: 'none' }}
           >
             <Maximize2 strokeWidth={3} className="w-5 h-5" />
           </button>
         </div>
       </div>
 
-      {/* Zoom controls centered */}
-      <div className="flex w-full items-center gap-2" style={{ justifyContent: 'center' }}>
-        <button
-          onClick={() => handleZoomChange(zoomPercent - 10)}
-          title="Zoom out"
-          className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 font-bold"
-          style={{
-            color: '#2b2b2b',
-            flexShrink: 0
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = '#FF8000')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = '#2b2b2b')}
-        >
-          <ZoomOut strokeWidth={3} className="w-5 h-5" />
-        </button>
-        <input
-          type="range"
-          min="10"
-          max="1000"
-          step="1"
-          value={zoomPercent}
-          onChange={(e) => {
-            const newValue = parseInt(e.target.value);
-            handleZoomChange(newValue);
-            updateSliderFill(newValue, 10, 1000, e.currentTarget);
-          }}
-          style={{
-            accentColor: '#FF8000',
-            appearance: 'none',
-            width: '100%',
-            height: '8px',
-            margin: 0,
-            marginBlock: 0,
-            borderRadius: '4px',
-            outline: 'none',
-            WebkitAppearance: 'none',
-            '--range-fill': `${((zoomPercent - 10) / (1000 - 10)) * 100}%`,
-            flex: 1,
-            minWidth: 0
-          } as React.CSSProperties}
-        />
-        <button
-          onClick={() => handleZoomChange(zoomPercent + 10)}
-          title="Zoom in"
-          className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 font-bold"
-          style={{
-            color: '#2b2b2b',
-            flexShrink: 0
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = '#FF8000')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = '#2b2b2b')}
-        >
-          <ZoomIn strokeWidth={3} className="w-5 h-5" />
-        </button>
-        <button
-          onClick={() => {
-            setZoomPercent(100);
-            setViewportCenterX(null);
-            setViewportCenterY(null);
-            setPanX(0);
-            setPanY(0);
-          }}
-          title="Reset zoom"
-          className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
-          style={{
-            color: '#2b2b2b',
-            flexShrink: 0
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = '#FF8000')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = '#2b2b2b')}
-        >
-          <RotateCcw strokeWidth={3} className="w-5 h-5" />
-        </button>
+      <div className="flex w-full flex-col gap-1">
+        {/* Zoom controls centered */}
+        <div className="flex w-full items-center gap-2">
+          <button
+            onClick={() => handleZoomChange(zoomPercent - 10)}
+            title="Zoom out"
+            className="px-3 py-2 rounded-lg flex items-center justify-center gap-2 font-bold btn-icon"
+            style={{ flexShrink: 0 }}
+          >
+            <ZoomOut strokeWidth={3} className="w-5 h-5" />
+          </button>
+          <input
+            type="range"
+            min="10"
+            max="1000"
+            step="1"
+            value={zoomPercent}
+            onChange={(e) => {
+              const newValue = parseInt(e.target.value);
+              handleZoomChange(newValue);
+              updateSliderFill(newValue, 10, 1000, e.currentTarget);
+            }}
+            style={{
+              accentColor: '#FF8000',
+              appearance: 'none',
+              width: '100%',
+              height: '8px',
+              margin: 0,
+              marginBlock: 0,
+              borderRadius: '4px',
+              outline: 'none',
+              WebkitAppearance: 'none',
+              '--range-fill': `${((zoomPercent - 10) / (1000 - 10)) * 100}%`,
+              flex: 1,
+              minWidth: 0
+            } as React.CSSProperties}
+          />
+          <button
+            onClick={() => handleZoomChange(zoomPercent + 10)}
+            title="Zoom in"
+            className="px-3 py-2 rounded-lg flex items-center justify-center gap-2 font-bold btn-icon"
+            style={{ flexShrink: 0 }}
+          >
+            <ZoomIn strokeWidth={3} className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => {
+              setZoomPercent(100);
+              setViewportCenterX(null);
+              setViewportCenterY(null);
+              setPanX(0);
+              setPanY(0);
+            }}
+            title="Reset zoom"
+            className="px-3 py-2 rounded-lg flex items-center gap-2 font-bold btn-icon"
+            style={{ flexShrink: 0 }}
+          >
+            <RotateCcw strokeWidth={3} className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="text-center text-sm font-medium text-(--app-text)">
+          Zoom: {zoomPercent}%
+        </div>
       </div>
 
-      <div className="text-center text-sm font-medium" style={{ marginTop: '0.5rem', color: '#000000' }}>
-        Zoom: {zoomPercent}%
-      </div>
+          </div>
+
+          {colorSummary.length > 0 && (
+            <div style={{ backgroundColor: 'var(--app-panel-bg)', borderRadius: '16px', boxShadow: '0 8px 0 var(--app-divider)', padding: '1rem', width: '100%' }}>
+              <h3 className={TYPOGRAPHY.h3} style={{ color: 'var(--app-text)', marginBottom: '8px' }}>
+                {colorSummary.length} color{colorSummary.length !== 1 ? 's' : ''} used
+              </h3>
+              {paletteMode === 'default' ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '8px' }}>
+                  {colorSummary.map(({ hex, pct, row, col }) => {
+                    const isActive = toolMode === 'colorFilter' && filterColor === hex;
+                    return (
+                      <div
+                        key={hex}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Filter by Row ${row}, Col ${col}`}
+                        onClick={() => {
+                          if (isActive) { setFilterColor(null); setToolMode('pan'); }
+                          else { setFilterColor(hex); setToolMode('colorFilter'); }
+                        }}
+                        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.click()}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '10px',
+                          borderRadius: '10px',
+                          backgroundColor: 'var(--app-btn-inactive-bg)',
+                          border: `2px solid ${isActive ? '#FF8000' : 'transparent'}`,
+                          cursor: 'pointer',
+                          transition: 'border-color 0.15s',
+                          userSelect: 'none',
+                        }}
+                      >
+                        <div style={{ width: '28px', height: '28px', borderRadius: '6px', backgroundColor: hex, border: '2px solid rgba(0,0,0,0.15)', flexShrink: 0 }} />
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--app-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            Row {row}, Col {col}
+                          </div>
+                          <div style={{ fontSize: '11px', color: 'var(--app-text-sub)' }}>
+                            {Math.round(pct * 100)}%
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '8px' }}>
+                  {colorSummary.map(({ hex, pct }) => {
+                    const isActive = toolMode === 'colorFilter' && filterColor === hex;
+                    const hsb = hexToIngameHSB(hex);
+                    return (
+                      <div
+                        key={hex}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Filter by ${hex}`}
+                        onClick={() => {
+                          if (isActive) { setFilterColor(null); setToolMode('pan'); }
+                          else { setFilterColor(hex); setToolMode('colorFilter'); }
+                        }}
+                        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.click()}
+                        style={{
+                          padding: '10px',
+                          borderRadius: '10px',
+                          backgroundColor: 'var(--app-btn-inactive-bg)',
+                          border: `2px solid ${isActive ? '#FF8000' : 'transparent'}`,
+                          cursor: 'pointer',
+                          transition: 'border-color 0.15s',
+                          userSelect: 'none',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                          <div style={{ width: '28px', height: '28px', borderRadius: '6px', backgroundColor: hex, border: '2px solid rgba(0,0,0,0.15)', flexShrink: 0 }} />
+                          <div>
+                            <div style={{ fontSize: '11px', fontFamily: 'monospace', fontWeight: 700, color: 'var(--app-text)' }}>{hex}</div>
+                            <div style={{ fontSize: '11px', color: 'var(--app-text-sub)' }}>{Math.round(pct * 100)}%</div>
+                          </div>
+                        </div>
+                        {([
+                          { label: 'H', value: hsb.h, max: 201 },
+                          { label: 'S', value: hsb.s, max: 211 },
+                          { label: 'B', value: hsb.b, max: 110 },
+                        ] as const).map(({ label, value, max }) => (
+                          <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' }}>
+                            <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--app-text-sub)', width: '12px', flexShrink: 0 }}>{label}</span>
+                            <div style={{ flex: 1, height: '4px', backgroundColor: 'rgba(0,0,0,0.12)', borderRadius: '2px', overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${(value / max) * 100}%`, backgroundColor: hex }} />
+                            </div>
+                            <span style={{ fontSize: '11px', fontFamily: 'monospace', fontWeight: 600, color: 'var(--app-text)', width: '28px', textAlign: 'right', flexShrink: 0 }}>{value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
 
@@ -814,7 +1025,7 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
         >
           <div
             style={{
-              backgroundColor: 'white',
+              backgroundColor: 'var(--app-panel-bg)',
               boxShadow: `0 6px 0 ${COLOR_SHADOW}`,
               borderRadius: '24px',
               display: 'flex',
@@ -849,47 +1060,38 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
             </div>
 
                         {/* Bottom section: Tools on left | Zoom Controls in middle | Grid/Download/Close on right */}
-             <div className="flex w-full items-center gap-2" style={{ marginTop: 'auto', flexWrap: 'wrap', justifyContent: 'center', gap: 'clamp(0.5rem, 2vw, 1rem)', padding: 'clamp(1rem, 3vw, 1.5rem)', paddingTop: 'clamp(0.75rem, 2vw, 1rem)', backgroundColor: 'white', flexShrink: 0 }}>
+             <div className="flex w-full items-center gap-2" style={{ marginTop: 'auto', flexWrap: 'wrap', justifyContent: 'center', gap: 'clamp(0.5rem, 2vw, 1rem)', padding: 'clamp(1rem, 3vw, 1.5rem)', paddingTop: 'clamp(0.75rem, 2vw, 1rem)', backgroundColor: 'var(--app-panel-bg)', flexShrink: 0 }}>
                {/* Tools on the left */}
                <div className="flex gap-2 flex-wrap">
                  <button
                    onClick={() => setToolMode('pan')}
-                   className="px-3 py-2 rounded-lg transition-all font-bold flex items-center gap-2"
-                   style={{
-                     backgroundColor: toolMode === 'pan' ? COLOR_PRIMARY : COLOR_SECONDARY,
-                     color: toolMode === 'pan' ? 'white' : 'black',
-                     border: 'none',
-                   }}
-                   title="Pan mode (drag to move)"
+                   className={`px-3 py-2 rounded-lg font-bold flex items-center gap-2 btn-tool${toolMode === 'pan' ? ' btn-tool--active' : ''}`}
+                   style={{ border: 'none' }}
+                   title="Pan mode — P"
                  >
                    <Hand strokeWidth={3} className="w-5 h-5" />
                    Pan
+                   <kbd style={{ fontSize: '10px', padding: '1px 4px', borderRadius: '3px', backgroundColor: 'rgba(0,0,0,0.15)', fontFamily: 'monospace', fontWeight: 400 }}>P</kbd>
                  </button>
                  <button
                    onClick={() => setToolMode(toolMode === 'eyedropper' ? 'pan' : 'eyedropper')}
-                   className="px-3 py-2 rounded-lg transition-all font-bold flex items-center gap-2"
-                   style={{
-                     backgroundColor: toolMode === 'eyedropper' ? COLOR_PRIMARY : COLOR_SECONDARY,
-                     color: toolMode === 'eyedropper' ? 'white' : 'black',
-                     border: 'none',
-                   }}
-                   title="Eyedropper mode (click to pick color)"
+                   className={`px-3 py-2 rounded-lg font-bold flex items-center gap-2 btn-tool${toolMode === 'eyedropper' ? ' btn-tool--active' : ''}`}
+                   style={{ border: 'none' }}
+                   title="Pick color — E"
                  >
                    <Pipette strokeWidth={3} className="w-5 h-5" />
                    Pick Color
+                   <kbd style={{ fontSize: '10px', padding: '1px 4px', borderRadius: '3px', backgroundColor: 'rgba(0,0,0,0.15)', fontFamily: 'monospace', fontWeight: 400 }}>E</kbd>
                  </button>
                  <button
                    onClick={() => setToolMode(toolMode === 'colorFilter' ? 'pan' : 'colorFilter')}
-                   className="px-3 py-2 rounded-lg transition-all font-bold flex items-center gap-2"
-                   style={{
-                     backgroundColor: toolMode === 'colorFilter' ? COLOR_PRIMARY : COLOR_SECONDARY,
-                     color: toolMode === 'colorFilter' ? 'white' : 'black',
-                     border: 'none',
-                   }}
-                   title="Color filter mode (click to select color to highlight)"
+                   className={`px-3 py-2 rounded-lg font-bold flex items-center gap-2 btn-tool${toolMode === 'colorFilter' ? ' btn-tool--active' : ''}`}
+                   style={{ border: 'none' }}
+                   title="Color filter — F"
                  >
                    <Wand2 strokeWidth={3} className="w-5 h-5" />
                    Filter
+                   <kbd style={{ fontSize: '10px', padding: '1px 4px', borderRadius: '3px', backgroundColor: 'rgba(0,0,0,0.15)', fontFamily: 'monospace', fontWeight: 400 }}>F</kbd>
                  </button>
                </div>
 
@@ -898,13 +1100,8 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
                  <button
                    onClick={() => handleZoomChange(zoomPercent - 10)}
                    title="Zoom out"
-                   className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 font-bold"
-                   style={{
-                     color: COLOR_TEXT,
-                     flexShrink: 0
-                   }}
-                   onMouseEnter={(e) => (e.currentTarget.style.color = COLOR_PRIMARY)}
-                   onMouseLeave={(e) => (e.currentTarget.style.color = COLOR_TEXT)}
+                   className="px-3 py-2 rounded-lg flex items-center justify-center gap-2 font-bold btn-icon"
+                   style={{ flexShrink: 0 }}
                  >
                    <ZoomOut strokeWidth={3} className="w-5 h-5" />
                  </button>
@@ -936,13 +1133,8 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
                  <button
                    onClick={() => handleZoomChange(zoomPercent + 10)}
                    title="Zoom in"
-                   className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 font-bold"
-                   style={{
-                     color: COLOR_TEXT,
-                     flexShrink: 0
-                   }}
-                   onMouseEnter={(e) => (e.currentTarget.style.color = COLOR_PRIMARY)}
-                   onMouseLeave={(e) => (e.currentTarget.style.color = COLOR_TEXT)}
+                   className="px-3 py-2 rounded-lg flex items-center justify-center gap-2 font-bold btn-icon"
+                   style={{ flexShrink: 0 }}
                  >
                    <ZoomIn strokeWidth={3} className="w-5 h-5" />
                  </button>
@@ -955,13 +1147,8 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
                      setPanY(0);
                    }}
                    title="Reset zoom"
-                   className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
-                   style={{
-                     color: COLOR_TEXT,
-                     flexShrink: 0
-                   }}
-                   onMouseEnter={(e) => (e.currentTarget.style.color = COLOR_PRIMARY)}
-                   onMouseLeave={(e) => (e.currentTarget.style.color = COLOR_TEXT)}
+                   className="px-3 py-2 rounded-lg flex items-center gap-2 font-bold btn-icon"
+                   style={{ flexShrink: 0 }}
                  >
                    <RotateCcw strokeWidth={3} className="w-5 h-5" />
                  </button>
@@ -975,36 +1162,29 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
                  <button
                    onClick={() => onToggleGrid(!showGrid)}
                    title="Toggle grid overlay"
-                   className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
-                   style={{
-                     backgroundColor: showGrid ? COLOR_PRIMARY : COLOR_SECONDARY,
-                     color: showGrid ? 'white' : 'black',
-                     border: 'none',
-                   }}
+                   aria-label="Toggle pixel grid overlay"
+                   className={`px-3 py-2 rounded-lg flex items-center gap-2 font-bold btn-tool${showGrid ? ' btn-tool--active' : ''}`}
+                   style={{ border: 'none' }}
                  >
                    <Grid3x3 strokeWidth={3} className="w-5 h-5" />
                  </button>
                  <button
                    onClick={handleDownload}
                    title="Download as PNG"
-                   className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold disabled:opacity-50"
-                   style={{
-                     backgroundColor: '#FFDA85',
-                     color: 'black',
-                   }}
+                   aria-label="Download converted image as PNG"
+                   className="px-4 py-2 rounded-lg flex items-center gap-2 font-bold disabled:opacity-50 btn-action"
+                   style={{ border: 'none' }}
                    disabled={!convertedImageData}
                  >
                    <Download strokeWidth={3} className="w-5 h-5" />
+                   <span>Download PNG</span>
                  </button>
                  <button
                    onClick={() => setIsFullscreen(false)}
                    title="Close fullscreen"
-                   className="px-3 py-2 rounded-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-2 font-bold"
-                   style={{
-                     backgroundColor: '#FFDA85',
-                     color: 'black',
-                     border: 'none',
-                   }}
+                   aria-label="Close fullscreen view"
+                   className="px-3 py-2 rounded-lg flex items-center gap-2 font-bold btn-action"
+                   style={{ border: 'none' }}
                  >
                    <X strokeWidth={3} className="w-5 h-5" />
                  </button>
@@ -1018,6 +1198,7 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
 
       {tooltip && createPortal(
         <div
+          onClick={handleCopyTooltip}
           style={{
             position: 'fixed',
             left: `${tooltip.x + 10}px`,
@@ -1029,25 +1210,21 @@ export const ConvertedView: React.FC<ConvertedViewProps> = ({
             fontSize: '14px',
             zIndex: 50,
             boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-            pointerEvents: 'none'
+            cursor: 'pointer',
+            userSelect: 'none',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div
-              style={{
-                width: '32px',
-                height: '32px',
-                border: '2px solid white',
-                borderRadius: '8px',
-                backgroundColor: tooltip.color
-              }}
-            />
+            <div style={{ width: '32px', height: '32px', border: '2px solid white', borderRadius: '8px', backgroundColor: tooltip.color }} />
             <div>
               {paletteMode === 'colorRange' ? (
-                <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>{tooltip.color.toUpperCase()}</span>
+                <div style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>{tooltip.color.toUpperCase()}</div>
               ) : (
-                <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Row {tooltip.row}, Col {tooltip.col}</span>
+                <div style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>Row {tooltip.row}, Col {tooltip.col}</div>
               )}
+              <div style={{ fontSize: '11px', color: copiedTooltip ? '#8ffe3c' : '#aaa', marginTop: '3px' }}>
+                {copiedTooltip ? 'Copied!' : 'Click to copy'}
+              </div>
             </div>
           </div>
         </div>,
